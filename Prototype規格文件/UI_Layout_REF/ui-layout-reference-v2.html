@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<title>Slot Game UI 配置參考 v2 — 1280×720</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d1a;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px 14px;min-height:100vh}
+h1{color:#e0c97f;font-size:14px;margin-bottom:12px;letter-spacing:2px;text-transform:uppercase}
+
+.cw{position:relative;width:100%;max-width:1280px;aspect-ratio:16/9;border:2px solid #4a3a6a;border-radius:6px;overflow:visible;background:#0a0a14}
+.ci{position:absolute;inset:0;overflow:hidden;border-radius:4px}
+.zone{position:absolute;display:flex;align-items:center;justify-content:center}
+
+/* ──────────────────────────────────────
+   ZONES (% of 1280×720)
+   Top shield  : h=5.56%  (40px)
+   Content     : h=81.94% (590px)
+     BOSS      : w=23.44% (300px)
+     Grid      : w=54.69% (700px)
+     MAGE      : w=21.88% (280px)
+   Bottom bar  : h=12.5%  (90px)
+────────────────────────────────────── */
+
+/* ① TOP SHIELD BAR */
+.shield-bar{
+  left:0;top:0;width:100%;height:5.56%;
+  background:linear-gradient(180deg,#1a0f28,#120c1e);
+  border-bottom:1px solid #3a2a5a;
+  flex-direction:row;padding:0 1.5%;gap:clamp(4px,1vw,14px);align-items:center;
+}
+.shield-label{font-size:clamp(6px,0.7vw,10px);color:#e8a060;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;flex-shrink:0;font-weight:bold}
+.shield-track{flex:1;height:55%;background:rgba(0,0,0,0.5);border-radius:99px;border:1px solid rgba(200,100,50,0.3);overflow:hidden;position:relative}
+.shield-fill{height:100%;width:62%;background:linear-gradient(90deg,#c03020,#e05020,#f07030,#ffa040);border-radius:99px;box-shadow:0 0 8px rgba(255,120,40,.5)}
+.shield-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.15);border-radius:99px 99px 0 0}
+.shield-pct{font-size:clamp(7px,0.8vw,11px);color:#f0a060;font-weight:bold;white-space:nowrap;flex-shrink:0;min-width:3em;text-align:right}
+
+/* ② CONTENT */
+.content{position:absolute;left:0;top:5.56%;width:100%;height:81.94%;display:flex}
+
+/* BOSS ZONE */
+.boss-zone{
+  width:23.44%;height:100%;
+  background:linear-gradient(135deg,#0d1a10,#0a1208);
+  border-right:1px solid rgba(80,160,80,.15);
+  position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.bg-boundary{
+  position:absolute;bottom:0;right:0;
+  width:min(167%,500px);height:min(84.75%,500px);
+  border:1.5px dashed rgba(255,180,50,.35);border-radius:4px;pointer-events:none;
+}
+.bg-label{
+  position:absolute;top:-1.8em;right:0;
+  background:rgba(160,100,20,.85);color:#ffe080;
+  font-size:clamp(5px,0.6vw,8px);padding:1px 5px;border-radius:3px;
+  white-space:nowrap;font-weight:bold;
+}
+.boss-sil-wrap{
+  width:55%;height:65%;
+  background:rgba(40,90,40,.18);border:1px dashed rgba(100,200,100,.25);
+  border-radius:8px 8px 0 0;display:flex;align-items:flex-end;justify-content:center;
+  position:relative;z-index:1;
+}
+.boss-note{font-size:clamp(5.5px,0.65vw,9px);color:rgba(180,230,180,.7);text-align:center;line-height:1.6;margin-top:6px;z-index:1}
+
+/* GRID ZONE */
+.grid-zone{
+  width:54.69%;height:100%;
+  background:linear-gradient(180deg,#090914,#0c0c1e);
+  position:relative;display:flex;align-items:center;justify-content:center;
+}
+.grid-frame{width:100%;height:72%;display:flex;align-items:center;justify-content:center}
+.slot-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(3,1fr);
+  gap:1.43% 1.43%;width:100%;height:100%;
+}
+.cell{background:rgba(55,45,85,.5);border:1px solid rgba(140,120,190,.3);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:clamp(7px,0.75vw,11px);color:rgba(200,180,240,.4)}
+.cell.hl{background:rgba(90,65,130,.7);border-color:rgba(200,160,255,.6);color:rgba(220,200,255,.7)}
+.cell.wc{background:rgba(100,70,150,.85);border-color:rgba(220,180,255,.8);color:#e0c0ff}
+.grid-tag{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:rgba(120,60,180,.85);color:#fff;font-size:clamp(5px,0.58vw,8px);padding:1px 6px;border-radius:2px;font-weight:bold;white-space:nowrap}
+.payline{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);font-size:clamp(5px,0.55vw,7.5px);color:rgba(180,160,220,.45);white-space:nowrap}
+
+/* MAGE ZONE */
+.mage-zone{
+  width:21.88%;height:100%;
+  background:linear-gradient(135deg,#0e0e28,#0b0b20);
+  border-left:1px solid rgba(80,80,200,.15);
+  position:relative;display:flex;flex-direction:column;
+}
+.wild-section{
+  width:100%;height:30.5%;
+  padding:clamp(12px,2%,20px) clamp(4px,0.6vw,10px) clamp(4px,0.6vw,8px);
+  border-bottom:1px solid rgba(140,100,220,.2);
+  display:flex;flex-direction:column;justify-content:space-evenly;
+  background:rgba(30,20,55,.6);position:relative;
+}
+.wild-title{font-size:clamp(6px,0.68vw,10px);color:#c0a0e8;text-transform:uppercase;letter-spacing:.8px;font-weight:bold;text-align:center}
+.wild-track{width:100%;height:clamp(10px,1.8vh,16px);background:rgba(0,0,0,.45);border-radius:99px;border:1px solid rgba(180,140,255,.25);overflow:hidden;position:relative}
+.wild-fill{height:100%;width:40%;background:linear-gradient(90deg,#6030c0,#9050e8,#c080ff);border-radius:99px;box-shadow:0 0 8px rgba(160,100,255,.5)}
+.wild-fill::after{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:rgba(255,255,255,.15);border-radius:99px 99px 0 0}
+.wild-counter{font-size:clamp(6px,0.75vw,10px);color:#c0a0ff;text-align:center;font-weight:bold;margin-top:2px}
+.skill-row{display:flex;gap:clamp(4px,.7vw,10px);justify-content:center;margin-top:clamp(2px,.3vw,5px)}
+.skill-slot{width:clamp(22px,3.2vw,44px);height:clamp(22px,3.2vw,44px);border-radius:6px;border:1.5px solid rgba(200,160,255,.35);background:rgba(50,30,80,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:clamp(10px,1.5vw,22px)}
+.skill-sub{font-size:clamp(4px,.48vw,6.5px);color:rgba(200,180,240,.6);letter-spacing:.2px;margin-top:1px}
+.mage-char-section{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.mage-sil{width:48%;height:68%;background:rgba(50,50,130,.2);border:1px dashed rgba(100,100,210,.3);border-radius:8px 8px 0 0;display:flex;align-items:flex-end;justify-content:center;position:relative;z-index:1}
+.mage-note{font-size:clamp(5.5px,.6vw,8.5px);color:rgba(180,180,255,.7);text-align:center;line-height:1.6;margin-top:5px;z-index:1}
+
+.zone-tag{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-size:clamp(5px,.55vw,7.5px);font-weight:bold;padding:1px 4px;border-radius:2px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.tg{background:rgba(80,180,80,.85);color:#fff}
+.tb{background:rgba(70,70,210,.85);color:#fff}
+
+/* separator */
+.sep{position:absolute;background:rgba(200,180,255,.1);pointer-events:none}
+.seh{left:0;width:100%;height:1px}
+
+/* ③ BOTTOM CONTROL BAR */
+.ctrl-bar{
+  position:absolute;left:0;top:87.5%;width:100%;height:12.5%;
+  background:linear-gradient(180deg,#1c1008,#120b05 60%,#0d0804);
+  border-top:1.5px solid #3a2510;
+  display:flex;align-items:center;
+  padding:0 clamp(6px,.9vw,16px);gap:clamp(3px,.5vw,8px);
+}
+.icon-btns{display:flex;gap:clamp(3px,.45vw,7px);flex-shrink:0}
+.icon-btn{width:clamp(22px,3vw,40px);height:clamp(22px,3vw,40px);border-radius:50%;border:1.5px solid rgba(200,180,160,.35);background:rgba(40,30,20,.6);color:rgba(220,200,180,.8);display:flex;align-items:center;justify-content:center;font-size:clamp(8px,1.1vw,16px);cursor:pointer;flex-shrink:0}
+.sound-bars{display:flex;align-items:flex-end;gap:1px;height:clamp(8px,1.1vw,16px)}
+.sb{width:clamp(2px,.25vw,3.5px);background:rgba(220,200,180,.8);border-radius:1px}
+.balance-blk{display:flex;flex-direction:column;justify-content:center;padding:0 clamp(4px,.6vw,12px);flex-shrink:0;margin-left:clamp(4px,1vw,16px)}
+.bal-num{font-size:clamp(11px,1.7vw,23px);color:#f0f0e8;font-weight:bold;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.bal-label{font-size:clamp(5px,.55vw,7.5px);color:rgba(200,180,160,.6);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.flex1{flex:1}
+.bet-ctrl{display:flex;align-items:center;gap:clamp(3px,.5vw,8px);flex-shrink:0}
+.pm-btn{width:clamp(20px,2.8vw,38px);height:clamp(20px,2.8vw,38px);border-radius:50%;border:1.5px solid rgba(200,180,160,.4);background:rgba(40,30,20,.6);color:rgba(240,220,200,.9);display:flex;align-items:center;justify-content:center;font-size:clamp(12px,1.6vw,22px);cursor:pointer;font-weight:300;line-height:1}
+.bet-val{display:flex;flex-direction:column;align-items:center;min-width:clamp(24px,3.5vw,48px)}
+.bet-num{font-size:clamp(14px,1.9vw,26px);color:#f0f0e8;font-weight:bold;line-height:1}
+.bet-label{font-size:clamp(5px,.55vw,7.5px);color:rgba(200,180,160,.6);text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+.ret-btn{width:clamp(22px,3vw,40px);height:clamp(22px,3vw,40px);border-radius:50%;border:1.5px solid rgba(200,180,160,.35);background:rgba(40,30,20,.6);color:rgba(220,200,180,.8);display:flex;align-items:center;justify-content:center;font-size:clamp(9px,1.3vw,18px);cursor:pointer;flex-shrink:0;margin-left:clamp(3px,.5vw,8px)}
+.spin-btn{width:clamp(50px,7.5vw,96px);height:clamp(50px,7.5vw,96px);border-radius:50%;background:radial-gradient(circle at 38% 35%,#f8f8f4,#d0d0c8);border:2.5px solid rgba(255,255,255,.6);box-shadow:0 0 16px rgba(255,255,255,.2),0 0 6px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:clamp(3px,.5vw,8px)}
+.spin-arrow{font-size:clamp(20px,3vw,42px);color:#1a1208;line-height:1}
+
+/* spec panel */
+.sp{width:100%;max-width:1280px;margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sc{background:rgba(25,20,42,.9);border:1px solid #4a3a6a;border-radius:6px;padding:10px 12px}
+.sc h4{color:#e0c97f;font-size:clamp(9px,.9vw,12px);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #3a2a5a;padding-bottom:4px}
+.sc p{color:#c0b0d8;font-size:clamp(7.5px,.8vw,10px);line-height:1.7}
+.ti{display:inline-block;background:#3a2a5a;padding:0 4px;border-radius:2px;color:#e0c97f;font-size:.9em}
+.nw{display:inline-block;background:#3a0a0a;padding:0 4px;border-radius:2px;color:#ff9090;font-size:.9em}
+</style>
+</head>
+<body>
+<h1>⚔ Slot Game UI 配置參考 v2 — 1280 × 720</h1>
+
+<div class="cw">
+<div class="ci">
+
+<!-- ① TOP SHIELD BAR (40px) -->
+<div class="zone shield-bar">
+  <span style="font-size:clamp(8px,1vw,14px);flex-shrink:0">🛡</span>
+  <div class="shield-label">BOSS 防護罩破損率</div>
+  <div class="shield-track"><div class="shield-fill"></div></div>
+  <div class="shield-pct">62%</div>
+</div>
+
+<!-- ② CONTENT AREA -->
+<div class="content">
+
+  <!-- BOSS ZONE (300px) -->
+  <div class="boss-zone">
+    <span class="zone-tag tg">BOSS 300×590</span>
+    <div class="bg-boundary">
+      <div class="bg-label">▶ BG 素材邊界 500×500px</div>
+    </div>
+    <div class="boss-sil-wrap">
+      <svg width="65%" height="90%" viewBox="0 0 56 80" style="opacity:.65">
+        <rect x="18" y="2" width="20" height="20" fill="#5a9a5a" rx="2"/>
+        <rect x="10" y="0" width="8" height="12" fill="#3a7a3a" rx="1"/>
+        <rect x="38" y="0" width="8" height="12" fill="#3a7a3a" rx="1"/>
+        <rect x="20" y="8" width="5" height="5" fill="#ff3030"/>
+        <rect x="31" y="8" width="5" height="5" fill="#ff3030"/>
+        <rect x="10" y="22" width="36" height="30" fill="#4a8a4a" rx="2"/>
+        <rect x="0" y="24" width="12" height="10" fill="#4a8a4a"/>
+        <rect x="44" y="24" width="12" height="10" fill="#4a8a4a"/>
+        <ellipse cx="5" cy="33" rx="6" ry="10" fill="none" stroke="#7ac07a" stroke-width="1.5"/>
+        <rect x="14" y="52" width="12" height="24" fill="#3a7a3a"/>
+        <rect x="30" y="52" width="12" height="24" fill="#3a7a3a"/>
+      </svg>
+    </div>
+    <div class="boss-note">
+      BOSS（左）<br/>
+      <span style="opacity:.7;font-size:.85em">NG: ~220×400px<br/>BG: 500×500px 進場<br/>→ 向右壓縮盤面</span>
+    </div>
+  </div>
+
+  <!-- GRID ZONE (700px) -->
+  <div class="grid-zone">
+    <div class="grid-tag">5×3 GRID ▪ 700×590 zone ▪ Cell ~132×132px ▪ Gap 10px</div>
+    <div class="grid-frame">
+      <div class="slot-grid">
+        <div class="cell">R1C1</div><div class="cell">R1C2</div><div class="cell hl">R1C3</div><div class="cell">R1C4</div><div class="cell">R1C5</div>
+        <div class="cell">R2C1</div><div class="cell">R2C2</div><div class="cell wc">R2C3</div><div class="cell">R2C4</div><div class="cell">R2C5</div>
+        <div class="cell">R3C1</div><div class="cell">R3C2</div><div class="cell hl">R3C3</div><div class="cell">R3C4</div><div class="cell">R3C5</div>
+      </div>
+    </div>
+    <div class="payline">← 中獎方向 C5→C1 ▪ 15 條固定 Payline ▪ Cascade 連鎖消除</div>
+  </div>
+
+  <!-- MAGE ZONE (280px) -->
+  <div class="mage-zone">
+    <span class="zone-tag tb" style="top:4px">MAGE 280×590</span>
+
+    <!-- WILD collection (top 30.5% = 180px) -->
+    <div class="wild-section" style="padding-top:clamp(16px,3.5%,26px)">
+      <div class="wild-title">⚡ WILD 蒐集</div>
+      <div>
+        <div class="wild-track"><div class="wild-fill"></div></div>
+        <div class="wild-counter">120 / 300</div>
+      </div>
+      <div class="skill-row">
+        <div class="skill-slot">🔥<div class="skill-sub">火技能</div></div>
+        <div class="skill-slot">❄️<div class="skill-sub">冰技能</div></div>
+      </div>
+    </div>
+
+    <!-- Mage character (bottom 69.5% = 410px) -->
+    <div class="mage-char-section">
+      <div class="mage-sil">
+        <svg width="52%" height="90%" viewBox="0 0 36 80" style="opacity:.65">
+          <polygon points="18,0 10,18 26,18" fill="#4040a0"/>
+          <rect x="7" y="16" width="22" height="4" fill="#5050c0" rx="1"/>
+          <rect x="11" y="20" width="14" height="12" fill="#b09070" rx="2"/>
+          <rect x="13" y="24" width="3" height="3" fill="#4040ff"/>
+          <rect x="20" y="24" width="3" height="3" fill="#4040ff"/>
+          <polygon points="8,32 28,32 32,78 4,78" fill="#3030a0"/>
+          <rect x="8" y="42" width="20" height="3" fill="#7070d0"/>
+          <rect x="2" y="32" width="6" height="16" fill="#3030a0" rx="2"/>
+          <rect x="28" y="20" width="5" height="18" fill="#3030a0" rx="2" transform="rotate(-25,30,29)"/>
+          <rect x="33" y="2" width="2" height="38" fill="#a07030"/>
+          <circle cx="34" cy="4" r="4" fill="#80c0ff" opacity=".85"/>
+          <circle cx="34" cy="4" r="2" fill="#c0e8ff"/>
+          <circle cx="34" cy="4" r="7" fill="none" stroke="#80c0ff" stroke-width=".5" opacity=".4"/>
+        </svg>
+      </div>
+      <div class="mage-note">
+        魔法師（右）<br/>
+        <span style="opacity:.7;font-size:.85em">~150×350px 像素<br/>Idle / 施法 動畫</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- content -->
+
+<!-- ③ BOTTOM CONTROL BAR (90px) -->
+<div class="ctrl-bar">
+  <div class="icon-btns">
+    <div class="icon-btn" title="選單">≡</div>
+    <div class="icon-btn" title="音量">
+      <div class="sound-bars">
+        <div class="sb" style="height:30%"></div>
+        <div class="sb" style="height:55%"></div>
+        <div class="sb" style="height:80%"></div>
+        <div class="sb" style="height:100%"></div>
+      </div>
+    </div>
+    <div class="icon-btn" title="加速">⚡</div>
+  </div>
+  <div class="balance-blk">
+    <div class="bal-num">9,999.00</div>
+    <div class="bal-label">BALANCE (USD)</div>
+  </div>
+  <div class="flex1"></div>
+  <div class="bet-ctrl">
+    <div class="pm-btn">－</div>
+    <div class="bet-val">
+      <div class="bet-num">1</div>
+      <div class="bet-label">BET (USD)</div>
+    </div>
+    <div class="pm-btn">＋</div>
+  </div>
+  <div class="ret-btn" title="返回/紀錄">↺</div>
+  <div class="spin-btn"><div class="spin-arrow">↻</div></div>
+</div>
+
+<!-- separators -->
+<div class="sep seh" style="top:5.56%"></div>
+<div class="sep seh" style="top:87.5%"></div>
+
+</div>
+</div><!-- canvas -->
+
+<!-- SPEC CARDS -->
+<div class="sp">
+  <div class="sc">
+    <h4>📐 版面尺寸（v2）</h4>
+    <p>
+      畫布：<span class="ti">1280 × 720</span><br/>
+      <span class="nw">NEW</span> 頂部護盾列：<span class="ti">1280 × 40px</span>（y=0）<br/>
+      內容區：<span class="ti">1280 × 590px</span>（y=40）<br/>
+      <span class="nw">↑</span> BOSS 區：<span class="ti">300 × 590px</span>（擴大）<br/>
+      格盤區：<span class="ti">700 × 590px</span><br/>
+      魔法師區：<span class="ti">280 × 590px</span><br/>
+      <span class="nw">NEW</span> 底部控制列：<span class="ti">1280 × 90px</span>（y=630）
+    </p>
+  </div>
+  <div class="sc">
+    <h4>🛡 防護罩列（頂部 40px）</h4>
+    <p>
+      位置：<span class="ti">全寬 × 40px (y=0)</span><br/>
+      元素：🛡 圖示 ＋ 標籤 ＋ 進度條 ＋ 百分比<br/>
+      填色方向：左→右（破損率越高越紅橙）<br/>
+      色彩：<span class="ti">紅→橙→黃 漸變</span><br/>
+      破損 100% 時觸發 BG 或結算（邏輯後定）
+    </p>
+  </div>
+  <div class="sc">
+    <h4>⚡ WILD 蒐集欄（魔法師上方）</h4>
+    <p>
+      位置：魔法師區上方 <span class="ti">280 × 180px</span><br/>
+      進度條：<span class="ti">0 → 300</span>，紫→金漸層<br/>
+      計數顯示：<span class="ti">n / 300</span><br/>
+      技能格 1：<span class="ti">🔥 火技能</span><br/>
+      技能格 2：<span class="ti">❄ 冰技能</span><br/>
+      滿格後技能可發動（邏輯後續定義）
+    </p>
+  </div>
+  <div class="sc">
+    <h4>🦹 BOSS 空間規劃</h4>
+    <p>
+      NG（一般）：BOSS 約 <span class="ti">220×400px</span> 顯示<br/>
+      BG（獎勵）：素材 <span class="ti">500×500px</span> 全尺寸進場<br/>
+      動作：BOSS 向右前進 → 壓縮格盤<br/>
+      虛線框：BG 模式下 BOSS 佔用邊界<br/>
+      NG/BG 位置細節後續討論
+    </p>
+  </div>
+  <div class="sc">
+    <h4>🎮 底部控制列（整合）</h4>
+    <p>
+      最左：<span class="ti">≡ 選單</span> · <span class="ti">🔊 音量</span> · <span class="ti">⚡ 加速</span><br/>
+      左中：<span class="ti">餘額</span> 大字 + BALANCE (USD)<br/>
+      中央：<span class="ti">－ BET ＋</span> 押注控制<br/>
+      右中：<span class="ti">↺ 返回/紀錄</span><br/>
+      最右：<span class="ti">↻ SPIN</span> 大白圓按鈕
+    </p>
+  </div>
+  <div class="sc">
+    <h4>🃏 格盤（v2 調整）</h4>
+    <p>
+      格盤區：<span class="ti">700 × 590px</span>（原 800×468）<br/>
+      格子：約 <span class="ti">132 × 132px</span>（原 152×152）<br/>
+      5 列 × 3 行 = 15 格 ▪ 間距 10px<br/>
+      BG 模式：BOSS 右移，格盤壓縮<br/>
+      Payline / Cascade 邏輯不變
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magic Cascade Slot v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;}
+body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;}
+#gameRoot{
+  width:1280px;height:720px;position:fixed;
+  background:#0a0a14;overflow:hidden;
+  font-family:'Courier New',monospace;
+}
+
+/* ── TOP BAR ─────────────────────────── */
+#topBar{
+  position:absolute;left:0;top:0;width:100%;height:40px;
+  background:linear-gradient(180deg,#1a0f28,#120c1e);
+  border-bottom:1px solid #3a2a5a;
+  display:flex;align-items:center;padding:0 20px;gap:12px;
+}
+#topBar .tb-icon{font-size:18px;}
+#topBar .tb-label{font-size:11px;color:#e8a060;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;font-weight:bold;}
+.bar-track{flex:1;height:16px;background:rgba(0,0,0,.5);border-radius:99px;border:1px solid rgba(200,100,50,.3);overflow:hidden;position:relative;}
+#barFill{height:100%;width:0%;background:linear-gradient(90deg,#c03020,#e05020,#f07030,#ffa040);border-radius:99px;transition:width 0.5s ease;box-shadow:0 0 8px rgba(255,120,40,.5);}
+#barFill.hp{background:linear-gradient(90deg,#c02020,#e03030,#ff4444);}
+#barVal{font-size:13px;color:#f0a060;font-weight:bold;min-width:52px;text-align:right;}
+.fg-badge{
+  font-size:10px;background:#ff4020;color:#fff;
+  padding:2px 8px;border-radius:4px;display:none;
+  font-weight:bold;letter-spacing:1px;
+}
+#fgSpinCounter{font-size:12px;color:#ffd040;font-weight:bold;display:none;}
+
+/* ── CONTENT AREA ───────────────────── */
+#contentArea{position:absolute;left:0;top:40px;width:100%;height:590px;display:flex;}
+
+/* BOSS ZONE */
+#bossZone{width:300px;height:590px;flex-shrink:0;background:linear-gradient(135deg,#0d1a10,#0a1208);border-right:1px solid rgba(80,160,80,.15);position:relative;overflow:hidden;}
+#bossCanvas{display:block;}
+
+/* GRID ZONE */
+#gridZone{flex:1;height:590px;background:linear-gradient(180deg,#090914,#0c0c1e);position:relative;overflow:hidden;}
+#gridCanvas{display:block;}
+
+/* Pixel-art fidelity when #gameRoot is CSS-scaled to fit the visitor's window (scaleGame()) */
+#bossCanvas,#gridCanvas,#mageCanvas{image-rendering:pixelated;image-rendering:crisp-edges;}
+
+/* MAGE ZONE */
+#mageZone{width:280px;height:590px;flex-shrink:0;background:linear-gradient(135deg,#0e0e28,#0b0b20);border-left:1px solid rgba(80,80,200,.15);display:flex;flex-direction:column;}
+#wildSection{
+  height:180px;flex-shrink:0;padding:14px 12px 10px;
+  border-bottom:1px solid rgba(140,100,220,.2);
+  background:rgba(30,20,55,.6);display:flex;flex-direction:column;gap:8px;
+}
+.wild-title{font-size:11px;color:#c0a0e8;text-transform:uppercase;letter-spacing:.8px;font-weight:bold;text-align:center;}
+.wild-track{width:100%;height:14px;background:rgba(0,0,0,.45);border-radius:99px;border:1px solid rgba(180,140,255,.25);overflow:hidden;}
+#wildFill{height:100%;width:0%;background:linear-gradient(90deg,#6030c0,#9050e8,#c080ff);border-radius:99px;transition:width 0.4s ease;box-shadow:0 0 8px rgba(160,100,255,.5);}
+#wildCounter{font-size:11px;color:#c0a0ff;text-align:center;font-weight:bold;}
+.skill-row{display:flex;gap:10px;justify-content:center;}
+.skill-btn{
+  width:52px;height:52px;border-radius:8px;border:2px solid rgba(200,160,255,.3);
+  background:rgba(50,30,80,.7);color:rgba(200,180,255,.5);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:20px;transition:all .2s;position:relative;
+}
+.skill-btn .s-label{font-size:9px;color:rgba(200,180,240,.5);margin-top:2px;}
+.skill-btn.available{border-color:rgba(200,160,255,.8);color:#fff;box-shadow:0 0 12px rgba(180,100,255,.4);}
+.skill-btn.queued{background:#5030a0;border-color:#c080ff;box-shadow:0 0 16px #8040ff;}
+.skill-btn.available:active{transform:scale(.92);}
+.auto-row{display:flex;justify-content:center;align-items:center;gap:6px;}
+#autoSkillBtn{
+  font-size:10px;padding:3px 12px;border-radius:10px;
+  border:1px solid rgba(180,150,255,.35);background:rgba(40,25,65,.7);
+  color:rgba(200,180,240,.6);cursor:pointer;letter-spacing:.5px;transition:all .2s;
+}
+#autoSkillBtn.on{background:#4020a0;border-color:#c080ff;color:#e0d0ff;box-shadow:0 0 8px #6030c060;}
+#mageCanvas{display:block;flex:1;}
+
+/* ── BOTTOM CONTROL BAR ─────────────── */
+#ctrlBar{
+  position:absolute;left:0;top:630px;width:100%;height:90px;
+  background:linear-gradient(180deg,#1c1008,#120b05 60%,#0d0804);
+  border-top:2px solid #3a2510;
+  display:flex;align-items:center;padding:0 18px;gap:8px;
+}
+.icon-btns{display:flex;gap:7px;flex-shrink:0;}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;
+  border:1.5px solid rgba(200,180,160,.35);background:rgba(40,30,20,.6);
+  color:rgba(220,200,180,.8);display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;transition:all .15s;flex-shrink:0;
+}
+.icon-btn:hover{background:rgba(60,50,35,.8);border-color:rgba(220,200,160,.5);}
+.icon-btn.active{background:#3a2010;border-color:#c0a060;color:#f0c060;box-shadow:0 0 8px #c0806040;}
+#soundBtn .sb-bars{display:flex;align-items:flex-end;gap:2px;height:16px;}
+#soundBtn .sb-bar{width:3px;background:rgba(220,200,180,.8);border-radius:1px;}
+.balance-blk{display:flex;flex-direction:column;justify-content:center;padding:0 14px;flex-shrink:0;margin-left:14px;}
+#balDisplay{font-size:26px;color:#f0f0e8;font-weight:bold;line-height:1;letter-spacing:.5px;font-variant-numeric:tabular-nums;}
+.bal-label{font-size:9px;color:rgba(200,180,160,.6);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.flex1{flex:1;}
+.bet-ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.pm-btn{
+  width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(200,180,160,.4);
+  background:rgba(40,30,20,.6);color:rgba(240,220,200,.9);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer;font-weight:300;line-height:1;transition:all .15s;
+}
+.pm-btn:hover{background:rgba(60,50,35,.9);}
+.pm-btn:active{transform:scale(.9);}
+.bet-val{display:flex;flex-direction:column;align-items:center;min-width:50px;}
+#betDisplay{font-size:28px;color:#f0f0e8;font-weight:bold;line-height:1;}
+.bet-label{font-size:9px;color:rgba(200,180,160,.6);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+#autoSpinBtn{
+  min-width:54px;height:40px;border-radius:20px;
+  border:1.5px solid rgba(200,180,160,.35);background:rgba(40,30,20,.6);
+  color:rgba(220,200,180,.8);display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:bold;letter-spacing:.5px;
+  cursor:pointer;flex-shrink:0;margin-left:8px;padding:0 8px;transition:all .15s;
+}
+#autoSpinBtn:hover{background:rgba(60,50,35,.8);}
+#autoSpinBtn.on{background:#603010;border-color:#e08030;color:#ffc060;box-shadow:0 0 10px #c0604060;}
+#spinBtn{
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle at 38% 35%,#f8f8f4,#d0d0c8);
+  border:3px solid rgba(255,255,255,.6);
+  box-shadow:0 0 20px rgba(255,255,255,.2),0 0 8px rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;margin-left:8px;transition:all .15s;
+}
+#spinBtn:hover{box-shadow:0 0 28px rgba(255,255,255,.35),0 0 10px rgba(0,0,0,.6);}
+#spinBtn:active:not(:disabled){transform:scale(.93);}
+#spinBtn:disabled{background:radial-gradient(circle at 38% 35%,#888,#555);box-shadow:none;cursor:not-allowed;}
+#spinBtn .spin-icon{font-size:38px;color:#1a1208;line-height:1;}
+#spinBtn.free-spin{background:radial-gradient(circle at 38% 35%,#ffd060,#c08010);}
+#spinBtn.free-spin .spin-icon{color:#3a2000;}
+#winBlock{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 14px;flex-shrink:0;}
+#winLabel{font-size:9px;color:rgba(200,180,160,.6);text-transform:uppercase;letter-spacing:.5px;}
+#winDisplay{font-size:22px;color:#ffd040;font-weight:bold;line-height:1;min-width:80px;text-align:center;}
+
+/* ── OVERLAYS ───────────────────────── */
+#msgOverlay{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:#1a0f2ef0;border:2px solid #c080ff;border-radius:10px;padding:14px 28px;
+  color:#e0d0ff;font-size:20px;font-weight:bold;text-align:center;
+  pointer-events:none;display:none;z-index:30;text-shadow:0 0 12px #c080ff;
+}
+#fgTransition{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;display:none;}
+#freeSpin{
+  position:absolute;left:50%;top:50px;transform:translateX(-50%);
+  background:rgba(30,10,0,.9);border:2px solid #ffd040;border-radius:8px;padding:6px 20px;
+  color:#ffd040;font-size:15px;font-weight:bold;display:none;z-index:10;text-align:center;
+  text-shadow:0 0 8px #ffd040;
+}
+.skill-active-badge{
+  position:absolute;top:-6px;right:-6px;background:#ff8020;color:#fff;font-size:9px;
+  width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;
+}
+#assetLoadingOverlay{
+  position:absolute;left:0;top:0;width:100%;height:100%;z-index:50;
+  background:#0a0a14;display:flex;align-items:center;justify-content:center;
+}
+#assetLoadingOverlay .alo-card{
+  background:#1a0f2ef0;border:2px solid #c080ff;border-radius:10px;padding:16px 32px;
+  color:#e0d0ff;font-size:15px;font-weight:bold;text-align:center;text-shadow:0 0 12px #c080ff;
+}
+</style>
+</head>
+<body>
+<div id="gameRoot">
+  <!-- TOP BAR -->
+  <div id="topBar">
+    <span class="tb-icon" id="tbIcon">🛡</span>
+    <span class="tb-label" id="tbLabel">BOSS 防護罩破損率</span>
+    <div class="bar-track"><div id="barFill"></div></div>
+    <span id="barVal">0%</span>
+    <span class="fg-badge" id="fgBadge">FG MODE</span>
+    <span id="fgSpinCounter"></span>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="contentArea">
+    <div id="bossZone"><canvas id="bossCanvas" width="300" height="590"></canvas></div>
+    <div id="gridZone"><canvas id="gridCanvas" width="700" height="590"></canvas></div>
+    <div id="mageZone">
+      <div id="wildSection">
+        <div class="wild-title">⚡ WILD 蒐集</div>
+        <div class="wild-track"><div id="wildFill"></div></div>
+        <div id="wildCounter">0 / 300</div>
+        <div class="skill-row">
+          <button class="skill-btn" id="fireBtn">🔥<div class="s-label">火技能</div></button>
+          <button class="skill-btn" id="iceBtn">❄️<div class="s-label">冰技能</div></button>
+        </div>
+        <div class="auto-row">
+          <button id="autoSkillBtn">AUTO SKILL OFF</button>
+        </div>
+      </div>
+      <canvas id="mageCanvas" width="280" height="410"></canvas>
+    </div>
+  </div>
+
+  <!-- CTRL BAR -->
+  <div id="ctrlBar">
+    <div class="icon-btns">
+      <div class="icon-btn" id="menuBtn">≡</div>
+      <div class="icon-btn active" id="soundBtn">
+        <div class="sb-bars" id="sbars">
+          <div class="sb-bar" style="height:30%"></div>
+          <div class="sb-bar" style="height:55%"></div>
+          <div class="sb-bar" style="height:80%"></div>
+          <div class="sb-bar" style="height:100%"></div>
+        </div>
+      </div>
+      <div class="icon-btn" id="speedBtn">⚡</div>
+    </div>
+    <div class="balance-blk">
+      <div id="balDisplay">10,000</div>
+      <div class="bal-label">BALANCE</div>
+    </div>
+    <div id="winBlock">
+      <div id="winLabel">WIN</div>
+      <div id="winDisplay">—</div>
+    </div>
+    <div class="flex1"></div>
+    <div class="bet-ctrl">
+      <button class="pm-btn" id="betMinus">－</button>
+      <div class="bet-val">
+        <div id="betDisplay">1</div>
+        <div class="bet-label">BET</div>
+      </div>
+      <button class="pm-btn" id="betPlus">＋</button>
+    </div>
+    <div id="autoSpinBtn">AUTO</div>
+    <button id="spinBtn"><span class="spin-icon">↻</span></button>
+  </div>
+
+  <!-- OVERLAYS -->
+  <div id="msgOverlay"></div>
+  <canvas id="fgTransition" width="1280" height="720"></canvas>
+  <div id="freeSpin"></div>
+
+  <div id="assetLoadingOverlay"><div class="alo-card" id="assetLoadingLabel">載入美術素材中...</div></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CONFIG & CONSTANTS
+// ═══════════════════════════════════════════════════════
+const COLS = 5, ROWS = 3;
+const CELL = 132, GAP = 10;
+const GX = 0;
+const GY = 87; // (590 - (3*132+2*10)) / 2 = 87
+
+const SYM = { A:0, B:1, C:2, D:3, E:4, SW:5, BW:6, CAT:7 };
+const SYM_COLORS = ['#40c060','#4080ff','#c0c0c0','#8040c0','#d040d0','#40e0e0','#ffd040','#ff88dd'];
+
+// ═══════════════════════════════════════════════════════
+// ASSET LOADER — 探測式讀取 Art_Sources 內的逐格動畫序列圖
+// 找不到素材時，繪製函式會 fallback 回程式生成的像素圖，不會破圖
+// ═══════════════════════════════════════════════════════
+const ART_BASE = 'Art_Sources';
+const ART_MAX_FRAMES = 120;
+
+const SYMBOL_FOLDERS = {
+  [SYM.A]:'A_goblin', [SYM.B]:'B_bat', [SYM.C]:'C_skeleton', [SYM.D]:'D_darkknight',
+  [SYM.E]:'E_lich', [SYM.SW]:'SW_small_wild', [SYM.BW]:'BW_big_wild', [SYM.CAT]:'CAT_charm'
+};
+const BOSS_STATES = ['idle','hit','roar','fg_mode'];
+const MAGE_STATES = ['idle','cast','cast_strong'];
+
+const ART = { symbols:{}, boss:{}, mage:{} };
+
+function loadOneImage(src){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = ()=>resolve(null);
+    img.src = src;
+  });
+}
+
+async function loadAnimSequence(basePath){
+  const frames = [];
+  for (let i=0;i<ART_MAX_FRAMES;i++){
+    const img = await loadOneImage(`${basePath}/${i}.png`);
+    if (!img) break;
+    frames.push(img);
+  }
+  return frames;
+}
+
+async function preloadAllArt(){
+  const stateJobs = [];
+  for (const symKey of Object.keys(SYMBOL_FOLDERS)){
+    stateJobs.push([`${ART_BASE}/symbols/${SYMBOL_FOLDERS[symKey]}/idle`, frames=>{ ART.symbols[symKey] = frames; }]);
+  }
+  for (const state of BOSS_STATES){
+    stateJobs.push([`${ART_BASE}/boss/${state}`, frames=>{ ART.boss[state] = frames; }]);
+  }
+  for (const state of MAGE_STATES){
+    stateJobs.push([`${ART_BASE}/mage/${state}`, frames=>{ ART.mage[state] = frames; }]);
+  }
+  let loaded = 0;
+  const total = stateJobs.length;
+  const label = document.getElementById('assetLoadingLabel');
+  const updateLabel = ()=>{ if(label) label.textContent = `載入美術素材中... (${loaded}/${total})`; };
+  updateLabel();
+  await Promise.all(stateJobs.map(([path,assign])=>
+    loadAnimSequence(path).then(frames=>{ assign(frames); loaded++; updateLabel(); })
+  ));
+}
+
+function animFrameIndex(frames, fps=8){
+  return Math.floor(performance.now()/1000*fps) % frames.length;
+}
+const PAYOUTS5 = [8, 8, 12, 24, 32, 16, 28, 0]; // SYM order; CAT has no payline payout (≈40% of original → RTP ~95%)
+
+const BET_VALUES = [1, 2, 5, 10, 25, 50, 100];
+const WILD_DROP_LOW = 0.30;
+const WILD_DROP_HIGH = 0.10;
+const SHIELD_PER_WIN = 5;
+const WILD_PTS_PER_WILD = 10;
+const SKILL_COST = 100;
+const SPAWN_DURATION = 0.45;
+const FG_FREE_SPINS = 6;
+
+// 20 Paylines — [row,col] from C5→C1 (col 4→0)
+const PAYLINES = [
+  [[1,4],[1,3],[1,2],[1,1],[1,0]],
+  [[0,4],[0,3],[0,2],[0,1],[0,0]],
+  [[2,4],[2,3],[2,2],[2,1],[2,0]],
+  [[0,4],[1,3],[2,2],[1,1],[0,0]],
+  [[2,4],[1,3],[0,2],[1,1],[2,0]],
+  [[0,4],[0,3],[1,2],[2,1],[2,0]],
+  [[2,4],[2,3],[1,2],[0,1],[0,0]],
+  [[1,4],[0,3],[0,2],[1,1],[2,0]],
+  [[1,4],[2,3],[2,2],[1,1],[0,0]],
+  [[0,4],[1,3],[1,2],[1,1],[0,0]],
+  [[2,4],[1,3],[1,2],[1,1],[2,0]],
+  [[0,4],[0,3],[1,2],[1,1],[2,0]],
+  [[2,4],[2,3],[1,2],[1,1],[0,0]],
+  [[1,4],[0,3],[1,2],[2,1],[1,0]],
+  [[1,4],[2,3],[1,2],[0,1],[1,0]],
+  [[0,4],[2,3],[0,2],[2,1],[0,0]],
+  [[2,4],[0,3],[2,2],[0,1],[2,0]],
+  [[0,4],[1,3],[2,2],[2,1],[2,0]],
+  [[2,4],[1,3],[0,2],[0,1],[0,0]],
+  [[1,4],[0,3],[0,2],[0,1],[1,0]],
+];
+
+// ═══════════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+let audioCtx = null;
+let soundEnabled = true;
+let bgmNode = null;
+
+function getAC() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playClick() {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.connect(g); g.connect(ac.destination);
+  o.frequency.setValueAtTime(900, ac.currentTime);
+  o.frequency.exponentialRampToValueAtTime(500, ac.currentTime+.07);
+  g.gain.setValueAtTime(.12, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+.09);
+  o.start(); o.stop(ac.currentTime+.09);
+}
+function playSpawn() {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine'; o.connect(g); g.connect(ac.destination);
+  o.frequency.setValueAtTime(280, ac.currentTime);
+  o.frequency.linearRampToValueAtTime(560, ac.currentTime+.3);
+  g.gain.setValueAtTime(.07, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+.4);
+  o.start(); o.stop(ac.currentTime+.4);
+}
+function playWin(isWild, isStrong) {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  const freqs = isWild
+    ? (isStrong ? [523,659,784,1047,1319,1568] : [523,659,784,1047,1319])
+    : [523,659,784,1047];
+  freqs.forEach((f,i) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = isWild ? 'sawtooth' : 'sine';
+    o.connect(g); g.connect(ac.destination);
+    o.frequency.value = f;
+    const t = ac.currentTime + i * .08;
+    g.gain.setValueAtTime(isWild ? .11 : .09, t);
+    g.gain.exponentialRampToValueAtTime(.001, t+.28);
+    o.start(t); o.stop(t+.3);
+  });
+}
+function playEliminate() {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  const buf = ac.createBuffer(1, ac.sampleRate*.15, ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const src = ac.createBufferSource(), g = ac.createGain(), f = ac.createBiquadFilter();
+  src.buffer=buf; f.type='bandpass'; f.frequency.value=700;
+  src.connect(f); f.connect(g); g.connect(ac.destination);
+  g.gain.setValueAtTime(.1, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+.15);
+  src.start(); src.stop(ac.currentTime+.15);
+}
+function playRoar() {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  const o = ac.createOscillator(), g = ac.createGain(), dist = ac.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i=0;i<256;i++){const x=i*2/256-1;curve[i]=x*3-x*x*x*.5;}
+  dist.curve=curve;
+  o.type='sawtooth'; o.frequency.setValueAtTime(80, ac.currentTime);
+  o.frequency.exponentialRampToValueAtTime(40, ac.currentTime+.8);
+  o.connect(dist); dist.connect(g); g.connect(ac.destination);
+  g.gain.setValueAtTime(.18, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+1);
+  o.start(); o.stop(ac.currentTime+1);
+}
+function playCatCharm() {
+  if (!soundEnabled) return;
+  const ac = getAC();
+  [523,659,784,1047,1319,1568,2093].forEach((f,i)=>{
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type='sine'; o.connect(g); g.connect(ac.destination);
+    o.frequency.value=f;
+    const t=ac.currentTime+i*.1;
+    g.gain.setValueAtTime(.12,t); g.gain.exponentialRampToValueAtTime(.001,t+.5);
+    o.start(t); o.stop(t+.6);
+  });
+}
+function startBGM() {
+  if (!soundEnabled || bgmNode) return;
+  const ac = getAC();
+  bgmNode = ac.createGain(); bgmNode.gain.value=.04;
+  bgmNode.connect(ac.destination);
+  const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88];
+  const pat=[0,2,4,7,5,3,2,0,4,3,2,4,5,7,5,4];
+  let beat=0;
+  function tick(){
+    if(!bgmNode)return;
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type='triangle'; o.connect(g); g.connect(bgmNode);
+    o.frequency.value=scale[pat[beat%pat.length]%scale.length]*(beat%16>7?2:1);
+    const t=ac.currentTime;
+    g.gain.setValueAtTime(.3,t); g.gain.exponentialRampToValueAtTime(.001,t+.42);
+    o.start(t); o.stop(t+.45); beat++;
+    setTimeout(tick,500);
+  }
+  tick();
+}
+
+// ═══════════════════════════════════════════════════════
+// PIXEL ART: SYMBOLS
+// ═══════════════════════════════════════════════════════
+function drawSymbol(ctx, sym, x, y, w, h, alpha=1, scale=1, glow=false, depleted=false, innerScale=1.0) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (depleted) ctx.filter = 'saturate(0%) brightness(0.45)';
+  if (glow) { ctx.shadowBlur=22; ctx.shadowColor=SYM_COLORS[sym]??'#fff'; }
+  const cx=x+w/2, cy=y+h/2;
+  const totalScale = scale * innerScale;
+  ctx.translate(cx,cy); ctx.scale(totalScale,totalScale); ctx.translate(-cx,-cy);
+  const artFrames = ART.symbols[sym];
+  if (artFrames && artFrames.length){
+    ctx.drawImage(artFrames[animFrameIndex(artFrames)], x, y, w, h);
+    ctx.restore();
+    return;
+  }
+  const pw=w/14, ph=h/14;
+  const r=(bx,by,bw,bh,c)=>{ctx.fillStyle=c; ctx.fillRect(x+bx*pw,y+by*ph,bw*pw,bh*ph);};
+  switch(sym){
+    case SYM.A: // GOBLIN
+      r(3,0,8,2,'#208040');
+      r(2,1,10,7,'#30c060');
+      r(0,3,3,4,'#28a050'); r(11,3,3,4,'#28a050');
+      r(3,3,2,2,'#ff2020'); r(9,3,2,2,'#ff2020');
+      r(4,7,6,2,'#28a050');
+      r(3,8,8,4,'#30c060');
+      r(1,9,3,4,'#208040'); r(10,9,3,4,'#208040');
+      r(5,11,2,3,'#28a050'); r(7,11,2,3,'#28a050');
+      r(10,6,4,6,'#c09030');
+      ctx.fillStyle='#30c060'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('A',cx,y+h-2); break;
+    case SYM.B: // BAT
+      r(0,3,5,6,'#1a3090'); r(9,3,5,6,'#1a3090');
+      r(1,1,4,4,'#1a2070'); r(9,1,4,4,'#1a2070');
+      r(0,5,3,3,'#304090'); r(11,5,3,3,'#304090');
+      r(4,2,6,5,'#2040b0');
+      r(5,1,4,3,'#2848c0');
+      r(5,2,2,2,'#ff3030'); r(7,2,2,2,'#ff3030');
+      r(5,4,2,2,'#ffffff'); r(7,4,2,2,'#ffffff');
+      r(5,7,4,3,'#1a3080');
+      ctx.fillStyle='#2848c0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('B',cx,y+h-2); break;
+    case SYM.C: // SKELETON
+      r(4,0,6,5,'#d0d0d0');
+      r(4,1,2,2,'#0d0a1a'); r(8,1,2,2,'#0d0a1a');
+      r(5,3,4,1,'#b0b0b0');
+      r(5,4,2,1,'#0d0a1a'); r(7,4,2,1,'#0d0a1a');
+      r(5,5,4,5,'#c0c0c0');
+      r(3,6,3,1,'#b0b0b0'); r(8,6,3,1,'#b0b0b0');
+      r(3,7,2,1,'#a0a0a0'); r(9,7,2,1,'#a0a0a0');
+      r(1,5,4,6,'#c0c0c0'); r(9,5,4,6,'#c0c0c0');
+      r(3,10,3,4,'#b0b0b0'); r(8,10,3,4,'#b0b0b0');
+      r(11,0,2,8,'#8080ff'); r(10,1,3,1,'#c0c0ff');
+      ctx.fillStyle='#c0c0c0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('C',cx,y+h-2); break;
+    case SYM.D: // DARK KNIGHT
+      r(3,0,8,3,'#5030a0'); r(4,1,6,2,'#200840');
+      r(3,2,2,1,'#ff2040'); r(9,2,1,1,'#ff2040');
+      r(2,3,3,2,'#6040b0'); r(9,3,3,2,'#6040b0');
+      r(1,4,3,8,'#4030a0'); r(10,4,3,8,'#4030a0');
+      r(4,4,6,8,'#4030a0'); r(5,6,4,4,'#300060');
+      r(5,7,4,1,'#8060e0'); r(6,6,2,1,'#8060e0');
+      r(4,11,3,3,'#302080'); r(7,11,3,3,'#302080');
+      r(12,0,2,9,'#8080c0'); r(10,1,4,1,'#c0c0ff'); r(12,9,3,2,'#604020');
+      ctx.fillStyle='#8060e0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('D',cx,y+h-2); break;
+    case SYM.E: // LICH
+      r(4,0,2,2,'#ffd040'); r(8,0,2,2,'#ffd040'); r(6,0,2,1,'#ffd040');
+      r(3,1,8,4,'#d0d0a0');
+      r(3,2,2,2,'#8020a0'); r(9,2,2,2,'#8020a0');
+      r(5,4,2,1,'#7030a0'); r(7,4,2,1,'#7030a0');
+      r(2,4,10,8,'#8020a0');
+      r(0,6,3,6,'#600080'); r(11,6,3,6,'#600080');
+      r(4,6,6,4,'#6010a0');
+      r(5,7,4,1,'#c060ff'); r(6,6,2,3,'#c060ff');
+      r(3,11,3,3,'#701090'); r(8,11,3,3,'#701090');
+      r(11,0,2,9,'#804010');
+      ctx.shadowBlur=14; ctx.shadowColor='#c060ff';
+      r(9,0,4,3,'#c060ff'); ctx.shadowBlur=0;
+      ctx.fillStyle='#c040e0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('E',cx,y+h-2); break;
+    case SYM.SW: { // SMALL WILD
+      const wcx=cx, wcy=y+h/2-6, wr=w*.34;
+      ctx.strokeStyle='#40e0e0'; ctx.lineWidth=2.5;
+      ctx.shadowBlur=10; ctx.shadowColor='#40e0e0';
+      ctx.beginPath(); ctx.arc(wcx,wcy,wr,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(wcx,wcy,wr*.65,0,Math.PI*2); ctx.stroke();
+      for(let i=0;i<6;i++){
+        const a=(i/6)*Math.PI*2;
+        ctx.beginPath(); ctx.moveTo(wcx,wcy); ctx.lineTo(wcx+Math.cos(a)*wr,wcy+Math.sin(a)*wr); ctx.stroke();
+      }
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#40e0e0'; ctx.font=`bold ${ph*1.3}px monospace`; ctx.textAlign='center';
+      ctx.fillText('WILD',wcx,y+h-4); break;
+    }
+    case SYM.BW: { // BIG WILD
+      const wcx=cx, wcy=y+h/2-6, r1=w*.40, r2=w*.26;
+      ctx.shadowBlur=16; ctx.shadowColor='#ffd040';
+      ctx.strokeStyle='#ffd040'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(wcx,wcy,r1,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='#ff8000'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(wcx,wcy,r2,0,Math.PI*2); ctx.stroke();
+      for(let i=0;i<8;i++){
+        const a=(i/8)*Math.PI*2;
+        ctx.strokeStyle=i%2===0?'#ffd040':'#ff8000'; ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(wcx+Math.cos(a)*r2,wcy+Math.sin(a)*r2);
+        ctx.lineTo(wcx+Math.cos(a+Math.PI*.125)*r1*.6,wcy+Math.sin(a+Math.PI*.125)*r1*.6);
+        ctx.stroke();
+      }
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#ffd040'; ctx.font=`bold ${ph*1.3}px monospace`; ctx.textAlign='center';
+      ctx.fillText('WILD',wcx,y+h-4); break;
+    }
+    case SYM.CAT: { // CAT CHARM — special FG symbol
+      const gold='#ffd040', pink='#ffaacc', white='#fff0f8', eyeC='#20c040';
+      // chain
+      r(6,0,2,3,gold);
+      // outer gold ring
+      r(3,3,8,1,gold); r(2,4,1,8,gold); r(11,4,1,8,gold); r(3,12,8,1,gold);
+      // inner face fill
+      r(3,4,8,8,pink);
+      // cat ears
+      r(3,2,3,3,pink); r(8,2,3,3,pink);
+      r(4,3,2,1,'#ff88bb'); r(9,3,2,1,'#ff88bb');
+      // eyes
+      ctx.shadowBlur=8; ctx.shadowColor='#20c040';
+      r(4,6,2,2,eyeC); r(8,6,2,2,eyeC);
+      ctx.shadowBlur=0;
+      // nose
+      r(6,8,2,1,'#ff6688');
+      // mouth
+      r(5,9,2,1,'#cc4466'); r(7,9,2,1,'#cc4466');
+      // whiskers
+      r(0,7,3,1,'#ffccdd'); r(11,7,3,1,'#ffccdd');
+      r(0,8,3,1,'#ffccdd'); r(11,8,3,1,'#ffccdd');
+      // label
+      ctx.shadowBlur=16; ctx.shadowColor='#ff88dd';
+      ctx.fillStyle='#ffd040'; ctx.font=`bold ${ph*1.2}px monospace`; ctx.textAlign='center';
+      ctx.fillText('★CAT★',cx,y+h-2);
+      ctx.shadowBlur=0; break;
+    }
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// PIXEL ART: BOSS CHARACTER (canvas 300×590)
+// ═══════════════════════════════════════════════════════
+function drawBoss(ctx, frame, hitFlash, shieldFlash, isRoar, isFGMode) {
+  ctx.clearRect(0,0,300,590);
+  const bob=Math.sin(frame*.1)*3;
+  const eyeG=.55+.45*Math.sin(frame*.25);
+  const bx=50, by=80+bob;
+  const P=7;
+
+  if (isFGMode) { ctx.fillStyle='rgba(255,80,0,.08)'; ctx.fillRect(0,0,300,590); }
+
+  if (shieldFlash>0) {
+    ctx.shadowBlur=30*shieldFlash; ctx.shadowColor=`rgba(255,100,50,${shieldFlash})`;
+    ctx.strokeStyle=`rgba(255,80,40,${shieldFlash*.8})`; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(150,330,140,0,Math.PI*2); ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  const bossStateKey = isRoar>0.3 ? 'roar' : hitFlash>0.3 ? 'hit' : isFGMode ? 'fg_mode' : 'idle';
+  const bossFrames = ART.boss[bossStateKey];
+  if (bossFrames && bossFrames.length){
+    ctx.drawImage(bossFrames[animFrameIndex(bossFrames)], 0, 0, 300, 590);
+  } else {
+    const B=(x,y,w,h,c)=>{ctx.fillStyle=c; ctx.fillRect(bx+x*P,by+y*P,w*P,h*P);};
+    B(1,16,20,28,'#2a0040');
+    B(3,10,16,8,'#3a0050');
+    B(4,17,14,18,'#3a0050');
+    B(6,20,10,14,'#200030');
+    B(7,23,8,8,'#300040');
+    B(9,25,4,1,'#c020c0'); B(10,23,2,5,'#c020c0');
+    ctx.shadowBlur=10; ctx.shadowColor='#c020c0';
+    B(9,25,4,1,'#e040e0'); B(10,23,2,5,'#e040e0');
+    ctx.shadowBlur=0;
+    B(1,17,5,5,'#500070'); B(16,17,5,5,'#500070');
+    B(0,19,4,8,'#400060'); B(18,19,4,8,'#400060');
+    B(5,2,12,12,'#3a0050');
+    B(6,4,10,9,'#280040');
+    ctx.shadowBlur=12*eyeG; ctx.shadowColor='#ff2020';
+    ctx.fillStyle=`rgba(255,50,50,${.6+.4*eyeG})`;
+    ctx.fillRect(bx+6*P,by+7*P,3*P,3*P);
+    ctx.fillRect(bx+13*P,by+7*P,3*P,3*P);
+    ctx.shadowBlur=0;
+    B(4,-5,3,7,'#600080'); B(15,-5,3,7,'#600080');
+    B(3,-8,3,4,'#500060'); B(16,-8,3,4,'#500060');
+    B(22,6,2,34,'#502030');
+    B(17,2,7,3,'#800060'); B(20,0,4,8,'#a00070');
+    ctx.shadowBlur=8; ctx.shadowColor='#c020c0'; B(20,0,4,8,'#c030d0'); ctx.shadowBlur=0;
+    B(5,34,5,12,'#2a0040'); B(12,34,5,12,'#2a0040');
+    B(5,44,5,4,'#400060'); B(12,44,5,4,'#400060');
+  }
+
+  if (isRoar) {
+    const shake=Math.sin(frame*.5)*6*isRoar;
+    ctx.save(); ctx.translate(shake,0);
+    ctx.fillStyle=`rgba(255,80,20,${isRoar*.3})`; ctx.fillRect(bx,by,22*P,48*P);
+    ctx.restore();
+  }
+  if (hitFlash>0) {
+    ctx.fillStyle=`rgba(255,120,80,${hitFlash*.35})`;
+    ctx.fillRect(bx,by-8*P,22*P,56*P);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// PIXEL ART: MAGE CHARACTER (canvas 280×410)
+// ═══════════════════════════════════════════════════════
+function drawMage(ctx, frame, castPhase, isStrong) {
+  ctx.clearRect(0,0,280,410);
+  const bob=Math.sin(frame*.1)*2;
+  const cloakW=Math.sin(frame*.16)*2.5;
+  const mx=60, my=20+bob;
+  const P=6;
+
+  if (castPhase>0) {
+    const bAlpha=Math.min(1,castPhase*2);
+    ctx.shadowBlur=20; ctx.shadowColor=isStrong?'#ffd040':'#80c0ff';
+    ctx.fillStyle=`rgba(${isStrong?'255,200,50':'100,200,255'},${bAlpha*.8})`;
+    ctx.fillRect(0,my+22*P,mx+2,4*P);
+    ctx.shadowBlur=25*castPhase;
+    ctx.fillStyle=`rgba(${isStrong?'255,220,80':'150,220,255'},${bAlpha})`;
+    ctx.fillRect(mx-4,my+20*P,10,8*P);
+    ctx.shadowBlur=0;
+  }
+
+  const mageStateKey = castPhase>0 ? (isStrong ? 'cast_strong' : 'cast') : 'idle';
+  const mageFrames = ART.mage[mageStateKey];
+  if (mageFrames && mageFrames.length){
+    ctx.drawImage(mageFrames[animFrameIndex(mageFrames)], 0, 0, 280, 410);
+  } else {
+    const B=(x,y,w,h,c)=>{ctx.fillStyle=c; ctx.fillRect(mx+x*P,my+y*P,w*P,h*P);};
+    B(4,15,14,28,'#1a2060');
+    B(2,18,4+cloakW*.5,20,'#141840'); B(16,18,4,20,'#141840');
+    B(5,30,12,10,'#1a2060');
+    B(6,18,10,16,'#202878');
+    B(8,22,6,1,'#4060c0'); B(10,20,2,5,'#4060c0');
+    B(5,14,12,5,'#2a3478');
+    B(6,4,10,8,'#f0c890'); B(7,5,8,6,'#e8c080');
+    B(7,7,3,2,'#3040b0'); B(12,7,3,2,'#3040b0');
+    B(7,9,2,2,'#c0c0c0'); B(12,9,3,3,'#c0c0c0');
+    B(5,2,12,2,'#1a1a5a');
+    B(7,-6,8,9,'#20206a');
+    B(9,-10,4,5,'#1a1a5a');
+    ctx.shadowBlur=castPhase>0?14:5; ctx.shadowColor='#ffd040';
+    B(10,-9,2,2,'#ffd040'); ctx.shadowBlur=0;
+
+    const armRot=castPhase>0?-.25:Math.sin(frame*.08)*.05;
+    ctx.save();
+    ctx.translate(mx+5*P,my+16*P); ctx.rotate(armRot);
+    ctx.fillStyle='#1a2060'; ctx.fillRect(-2*P,0,4*P,12*P);
+    ctx.restore();
+
+    const staffLean=castPhase>0?-.18:cloakW*.02;
+    ctx.save();
+    ctx.translate(mx+4*P,my+10*P); ctx.rotate(staffLean);
+    ctx.fillStyle='#6a4010'; ctx.fillRect(-P,-12*P,2*P,38*P);
+    ctx.shadowBlur=castPhase>0?22:8;
+    ctx.shadowColor=isStrong&&castPhase>0?'#ffd040':'#80c0ff';
+    ctx.fillStyle=isStrong&&castPhase>0?'#ffd040':'#80c0ff';
+    ctx.fillRect(-2*P,-16*P,4*P,4*P);
+    ctx.shadowBlur=0;
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════
+const game = {
+  balance: 10000,
+  betIdx: 0,
+  totalWin: 0,
+  state: 'IDLE',
+  grid: null,
+  shieldDmg: 0,       // NG mode shield 0–100%
+  bossHp: 100,         // FG mode BOSS HP 100→0
+  wildPts: 0,
+  fireQueued: 0,
+  fireActive: false,   // true during current spin if fire was queued
+  iceQueued: 0,
+  iceNextWildBonus: 0, // bonus uses remaining for next WILD drops (Ice skill)
+  autoSpin: false,
+  autoSkill: false,
+  fgMode: false,
+  fgSpinsLeft: 0,
+  fgSpinsDone: 0,      // spins completed in this FG run
+  fgBossCol: 0,        // cols consumed from right: 0=5active … 4=1active
+  fgTotalWin: 0,
+  revealAnticRow: -1,  // row being "anticipated" during 1-col reveal (-1=none)
+  speedMode: false,
+  bossFrame: 0, mageFrame: 0,
+  castPhase: 0, castStrong: false,
+  hitFlash: 0, shieldFlash: 0, bossRoar: 0,
+  cellState: null,
+  winLines: [], winBeamProg: 0,
+  cascadeCount: 0,        // cascade steps in current spin (for combo display)
+  bossHitQueue: [],       // {value, time} — numbers waiting to pop up on boss canvas
+  bossHitNumbers: [],     // {value, x, y, alpha, vy, vx} — currently animating numbers
+};
+
+function getBet() { return BET_VALUES[game.betIdx]; }
+function isWild(sym) { return sym===SYM.SW||sym===SYM.BW; }
+function canReplace(wildSym, target) {
+  if (isWild(target)) return true;
+  if (wildSym===SYM.BW) return true;
+  if (wildSym===SYM.SW) return target<=SYM.C;
+  return false;
+}
+
+let _featSym = -1;
+
+function initGrid() {
+  _featSym = Math.floor(Math.random()*5);
+  game.grid = [];
+  for (let r=0;r<ROWS;r++) {
+    game.grid[r]=[];
+    for (let c=0;c<COLS;c++) {
+      game.grid[r][c]={sym:randSym(0.48),wildUses:0,depleted:false};
+    }
+  }
+}
+function randSym(featBias=0.55) {
+  if (_featSym>=0 && Math.random()<featBias) return _featSym;
+  const w=[28,25,20,14,8];
+  const t=w.reduce((a,b)=>a+b,0);
+  let rnd=Math.random()*t;
+  for (let i=0;i<w.length;i++){rnd-=w[i];if(rnd<=0)return i;}
+  return 0;
+}
+function initCellStates(spawnAll=true) {
+  game.cellState=[];
+  for (let r=0;r<ROWS;r++){
+    game.cellState[r]=[];
+    for (let c=0;c<COLS;c++){
+      // Consumed columns (null cells in FG) don't need spawn animation
+      const isConsumed=game.fgMode&&c<game.fgBossCol;
+      game.cellState[r][c]={alpha:isConsumed?1:(spawnAll?0:1),spawnProg:isConsumed?1:(spawnAll?0:1),scale:1,glow:0,elimAlpha:1};
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// WIN EVALUATION (scales with active columns)
+// ═══════════════════════════════════════════════════════
+function evaluateWins() {
+  const wins=[];
+  const activeCols = game.fgMode ? (COLS - game.fgBossCol) : COLS;
+  const requiredMatch = activeCols; // 5→5-match, 4→4-match, etc.
+
+  for (let li=0;li<PAYLINES.length;li++) {
+    const line=PAYLINES[li];
+    // Keep only cells in active columns (cols fgBossCol..COLS-1, right side)
+    const activeLine=line.filter(([r,c])=>c>=game.fgBossCol);
+    if (activeLine.length<requiredMatch) continue;
+    // Use exactly requiredMatch leading cells (rightmost active cols first in array)
+    const checkCells=activeLine.slice(0,requiredMatch);
+    const cells=checkCells.map(([r,c])=>game.grid[r][c]);
+
+    // Find base symbol (first non-wild, non-depleted)
+    let baseSym=null;
+    for (let i=0;i<cells.length;i++){
+      const cell=cells[i];
+      if(!cell||cell.depleted)break;
+      if(!isWild(cell.sym)){baseSym=cell.sym;break;}
+    }
+    if (baseSym===null) {
+      const wildCount=cells.filter(c=>c&&!c.depleted&&isWild(c.sym)).length;
+      if (wildCount===requiredMatch){
+        wins.push({lineIdx:li,cells:checkCells,isWild:true,sym:SYM.BW,count:requiredMatch});
+      }
+      continue;
+    }
+    let count=0,hasWild=false;
+    for (let i=0;i<cells.length;i++){
+      const cell=cells[i];
+      if(!cell||cell.depleted)break;
+      if(cell.sym===baseSym)count++;
+      else if(isWild(cell.sym)&&canReplace(cell.sym,baseSym)){count++;hasWild=true;}
+      else break;
+    }
+    if (count===requiredMatch){
+      wins.push({lineIdx:li,cells:checkCells,isWild:hasWild,sym:baseSym,count:requiredMatch});
+    }
+  }
+  return wins;
+}
+
+function calcWin(wins) {
+  const betPerLine=getBet();
+  const multiplier=game.fireActive?1.1:1;
+  let total=0;
+  wins.forEach(w=>{total+=PAYOUTS5[w.sym]*betPerLine*multiplier;});
+  return Math.floor(total);
+}
+
+function getWinCells(wins) {
+  const s=new Set();
+  wins.forEach(w=>w.cells.forEach(([r,c])=>s.add(`${r},${c}`)));
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════
+// CASCADE ENGINE
+// ═══════════════════════════════════════════════════════
+async function eliminateAndRefill(winCells) {
+  const toRemove=[];
+  const wildDropPositions=[];
+
+  winCells.forEach(key=>{
+    const [r,c]=key.split(',').map(Number);
+    const cell=game.grid[r][c];
+    if(!cell)return;
+    if(isWild(cell.sym)){
+      cell.wildUses++;
+      if(cell.wildUses>=2) cell.depleted=true;
+      // depleted WILDs stay — not added to toRemove
+    } else {
+      const prob=cell.sym<=SYM.C?WILD_DROP_LOW:WILD_DROP_HIGH;
+      if(Math.random()<prob){
+        wildDropPositions.push({r,c,sym:cell.sym<=SYM.C?SYM.SW:SYM.BW});
+      } else {
+        toRemove.push({r,c});
+      }
+    }
+  });
+
+  // Fade out removed cells
+  toRemove.forEach(({r,c})=>{
+    game.cellState[r][c].elimAlpha=0;
+    game.grid[r][c]=null;
+  });
+  // Wild-drop cells become the new WILD (don't null them yet)
+  wildDropPositions.forEach(({r,c,sym})=>{
+    // Apply ice bonus if available
+    const uses = game.iceNextWildBonus>0 ? -1 : 0;
+    if(game.iceNextWildBonus>0) game.iceNextWildBonus--;
+    game.grid[r][c]={sym,wildUses:uses,depleted:false};
+    game.cellState[r][c].spawnProg=0;
+    game.cellState[r][c].alpha=0;
+    game.cellState[r][c].elimAlpha=1;
+  });
+
+  playEliminate();
+  await sleep(200);
+
+  // Gravity — depleted WILDs are "stuck", other cells fall around them; skip consumed cols
+  for (let c=0;c<COLS;c++){
+    if(game.fgMode && c<game.fgBossCol) continue; // consumed column, skip
+    // Collect moveable (non-depleted, non-null) cells bottom→top
+    const moveable=[];
+    for (let r=ROWS-1;r>=0;r--){
+      const cell=game.grid[r][c];
+      if(cell&&!cell.depleted) moveable.push(cell);
+    }
+    // Assign from bottom, skip depleted positions
+    let mi=0;
+    for (let r=ROWS-1;r>=0;r--){
+      if(game.grid[r][c]?.depleted) continue; // stays put
+      if(mi<moveable.length){
+        const prev=game.grid[r][c];
+        game.grid[r][c]=moveable[mi++];
+        if(!prev){
+          // WILD moving into an empty slot: show instantly, no spawn animation
+          if(isWild(game.grid[r][c]?.sym)&&!game.grid[r][c]?.depleted){
+            game.cellState[r][c].spawnProg=1;
+            game.cellState[r][c].alpha=1;
+            game.cellState[r][c].elimAlpha=1;
+          } else {
+            game.cellState[r][c].spawnProg=0;
+            game.cellState[r][c].alpha=0;
+            game.cellState[r][c].elimAlpha=1;
+          }
+        }
+      } else {
+        game.grid[r][c]={sym:randSym(0.55),wildUses:0,depleted:false};
+        game.cellState[r][c].spawnProg=0;
+        game.cellState[r][c].alpha=0;
+        game.cellState[r][c].elimAlpha=1;
+      }
+    }
+  }
+}
+
+async function spawnAll() {
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    const cell=game.grid?.[r]?.[c];
+    // Non-depleted WILDs already fully visible: keep them on screen without re-spawn animation
+    if(cell&&isWild(cell.sym)&&!cell.depleted&&game.cellState[r][c].spawnProg>=1){
+      game.cellState[r][c].elimAlpha=1;
+      continue;
+    }
+    game.cellState[r][c].spawnProg=0;
+    game.cellState[r][c].alpha=0;
+    game.cellState[r][c].elimAlpha=1;
+  }
+  playSpawn();
+  const dur=game.speedMode?SPAWN_DURATION*.5:SPAWN_DURATION;
+  await sleep(dur*1000+80);
+}
+
+async function spawnCell(r, c) {
+  game.cellState[r][c].spawnProg=0;
+  game.cellState[r][c].alpha=0;
+  game.cellState[r][c].elimAlpha=1;
+  playSpawn();
+  const dur=game.speedMode?SPAWN_DURATION*.5:SPAWN_DURATION;
+  await sleep(dur*1000+80);
+}
+
+async function cascadeLoop() {
+  // cascadeCount is reset to 0 in doSpin() before this call
+  while(true){
+    const wins=evaluateWins();
+    if(!wins.length) break;
+
+    game.cascadeCount++; // 1st hit = cascade 1, 2nd = cascade 2 (shows "2 COMBO"), etc.
+
+    const hasWild=wins.some(w=>w.isWild);
+    const isStrongWin=wins.some(w=>w.isWild&&w.sym===SYM.BW);
+
+    game.winLines=wins;
+    game.winBeamProg=0;
+    game.castPhase=isStrongWin?1.5:1;
+    game.castStrong=isStrongWin;
+    game.hitFlash=isStrongWin?1:0.7;
+    game.shieldFlash=isStrongWin?1:0.6;
+    playWin(hasWild,isStrongWin);
+
+    const winCells=getWinCells(wins);
+    winCells.forEach(key=>{
+      const [r,c]=key.split(',').map(Number);
+      game.cellState[r][c].scale=isWild(game.grid[r][c]?.sym)?1.5:1.3;
+      game.cellState[r][c].glow=1;
+    });
+
+    // WILD pts
+    wins.forEach(w=>{
+      w.cells.forEach(([r,c])=>{
+        if(game.grid[r][c]&&isWild(game.grid[r][c].sym)){
+          game.wildPts=Math.min(300,game.wildPts+WILD_PTS_PER_WILD);
+        }
+      });
+    });
+
+    const winAmt=calcWin(wins);
+    game.totalWin+=winAmt;
+    game.balance+=winAmt;
+    if(game.fgMode) game.fgTotalWin+=winAmt;
+
+    // Queue sequential hit-number popups on BOSS canvas (one per winning line, staggered)
+    {
+      const betPerLine=getBet();
+      const mult=game.fireActive?1.1:1;
+      const queueStart=Date.now()+150;
+      wins.forEach((w,i)=>{
+        const lineAmt=Math.floor(PAYOUTS5[w.sym]*betPerLine*mult);
+        game.bossHitQueue.push({value:lineAmt, time:queueStart+i*140});
+      });
+    }
+
+    // NG: shield damage; FG: BOSS HP damage
+    if(!game.fgMode){
+      game.shieldDmg=Math.min(100,game.shieldDmg+SHIELD_PER_WIN);
+    } else {
+      // Damage per winning line = 1 + SW_count + BW_count*2
+      wins.forEach(w=>{
+        let sw=0,bw=0;
+        w.cells.forEach(([r,c])=>{
+          const cell=game.grid[r][c];
+          if(!cell)return;
+          if(cell.sym===SYM.SW)sw++;
+          else if(cell.sym===SYM.BW)bw++;
+        });
+        const dmg=1+sw+bw*2;
+        game.bossHp=Math.max(0,game.bossHp-dmg);
+      });
+    }
+
+    updateUI();
+    await sleep(game.speedMode?600:900);
+
+    // FG: if BOSS HP hit 0 this round → stop cascade, doSpin() will handle early FG end
+    if(game.fgMode && game.bossHp<=0) break;
+
+    await eliminateAndRefill(winCells);
+    await spawnAll();
+    game.winLines=[];
+  }
+
+  // Check FG trigger (NG mode only)
+  if(!game.fgMode && game.shieldDmg>=100){
+    await triggerFGMode();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SKILL SYSTEM
+// ═══════════════════════════════════════════════════════
+function getSkillCharges() { return Math.floor(game.wildPts/SKILL_COST); }
+function spendSkill() {
+  if(game.wildPts<SKILL_COST) return false;
+  game.wildPts-=SKILL_COST; return true;
+}
+function tryAutoSkill() {
+  if(!game.autoSkill) return;
+  while(game.wildPts>=SKILL_COST){
+    if(game.fireQueued<=game.iceQueued) game.fireQueued++;
+    else game.iceQueued++;
+    spendSkill();
+  }
+  updateSkillUI();
+}
+
+// ═══════════════════════════════════════════════════════
+// FG MODE
+// ═══════════════════════════════════════════════════════
+async function triggerFGMode() {
+  game.fgMode=true;
+  game.fgSpinsLeft=FG_FREE_SPINS;
+  game.fgSpinsDone=0;
+  game.fgBossCol=0;
+  game.fgTotalWin=0;
+  game.bossHp=100;
+  game.shieldDmg=0;
+  game.bossRoar=1;
+  playRoar();
+  await sleep(800);
+  await pixelFGTransition();
+  document.getElementById('fgBadge').style.display='inline-block';
+  document.getElementById('fgSpinCounter').style.display='inline';
+  document.getElementById('freeSpin').style.display='block';
+  document.getElementById('spinBtn').classList.add('free-spin');
+  updateUI();
+  game.bossRoar=0;
+}
+
+function endFGMode() {
+  game.fgMode=false;
+  game.fgSpinsLeft=0;
+  game.fgSpinsDone=0;
+  game.fgBossCol=0;
+  game.shieldDmg=0;
+  document.getElementById('fgBadge').style.display='none';
+  document.getElementById('fgSpinCounter').style.display='none';
+  document.getElementById('freeSpin').style.display='none';
+  document.getElementById('spinBtn').classList.remove('free-spin');
+  updateUI();
+}
+
+async function pixelFGTransition() {
+  const oc=document.getElementById('fgTransition');
+  oc.style.display='block';
+  const ctx=oc.getContext('2d');
+  const ps=32;
+  const cols=Math.ceil(1280/ps), rows=Math.ceil(720/ps);
+  for (let col=0;col<cols;col++){
+    for (let row=0;row<rows;row++){
+      ctx.fillStyle='#1a0500';
+      ctx.fillRect(col*ps,row*ps,ps,ps);
+    }
+    await sleep(18);
+  }
+  for (let a=1;a>=0;a-=0.1){
+    ctx.globalAlpha=a; ctx.fillStyle='#1a0500'; ctx.fillRect(0,0,1280,720);
+    await sleep(40);
+  }
+  ctx.globalAlpha=1;
+  oc.style.display='none';
+}
+
+// 1-col sequential reveal (Spin 6 in FG)
+async function performLastColReveal() {
+  // Pre-determine cat charm (20%)
+  const hasCat=Math.random()<0.20;
+  const catRow=hasCat?Math.floor(Math.random()*ROWS):-1;
+  const revCol=COLS-1; // col 4 — last standing column
+
+  // Set col 4 cells (hidden initially)
+  for(let r=0;r<ROWS;r++){
+    const sym=(hasCat&&r===catRow)?SYM.CAT:randSym(0.55);
+    game.grid[r][revCol]={sym,wildUses:0,depleted:false};
+    game.cellState[r][revCol]={alpha:0,spawnProg:0,scale:1,glow:0,elimAlpha:1};
+  }
+
+  // Reveal each row with anticipation
+  for(let r=0;r<ROWS;r++){
+    // Anticipation: flash cell border
+    game.revealAnticRow=r;
+    await sleep(game.speedMode?400:900);
+    game.revealAnticRow=-1;
+
+    // Reveal symbol
+    await spawnCell(r,revCol);
+
+    if(game.grid[r][revCol].sym===SYM.CAT){
+      await catCharmKill();
+      return;
+    }
+    await sleep(game.speedMode?200:400);
+  }
+
+  // No cat charm
+  game.fgSpinsLeft=0;
+  showMsg('BOSS 勝利！\n回到 NG', 2000);
+  await sleep(2200);
+  endFGMode();
+  showMsg('回到 NG', 1500);
+}
+
+async function catCharmKill() {
+  playCatCharm();
+  game.bossRoar=2;
+  game.hitFlash=3;
+  game.bossHp=0;
+  updateUI();
+
+  const hasBonus=game.wildPts>=100;
+  let finalWin=game.fgTotalWin;
+  if(hasBonus){
+    finalWin*=10;
+    game.balance+=(finalWin-game.fgTotalWin);
+    game.totalWin+=(finalWin-game.fgTotalWin);
+    game.fgTotalWin=finalWin;
+  }
+  updateUI();
+
+  showMsg(hasBonus
+    ? `✨ 貓咪大招！FG 總獎金 × 10 = ${finalWin.toLocaleString()}！`
+    : `🐱 貓咪墜飾！秒殺 BOSS！獎金 ${finalWin.toLocaleString()}！`,
+    3000);
+  await sleep(3200);
+  endFGMode();
+  showMsg('回到 NG', 1500);
+}
+
+// ═══════════════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════════════
+const particles=[];
+function addParticles(cx,cy,color,count,big){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2, s=(big?2.5:1.5)+Math.random()*2;
+    particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      life:1,decay:.04+Math.random()*.03,size:big?4:2.5,color});
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════
+const gridCvs=document.getElementById('gridCanvas');
+const gCtx=gridCvs.getContext('2d');
+const bossCvs=document.getElementById('bossCanvas');
+const bCtx=bossCvs.getContext('2d');
+const mageCvs=document.getElementById('mageCanvas');
+const mCtx=mageCvs.getContext('2d');
+gCtx.imageSmoothingEnabled=false;
+bCtx.imageSmoothingEnabled=false;
+mCtx.imageSmoothingEnabled=false;
+
+function cellRect(r,c){
+  if(game.fgMode && game.fgBossCol>0){
+    // Active cols: fgBossCol..COLS-1. Right-align them in the 700px canvas.
+    const activeCols=COLS-game.fgBossCol;
+    const activeW=activeCols*CELL+(activeCols-1)*GAP;
+    const startX=700-activeW;
+    const colInActive=c-game.fgBossCol;
+    return{x:startX+colInActive*(CELL+GAP),y:GY+r*(CELL+GAP),w:CELL,h:CELL};
+  }
+  return{x:c*(CELL+GAP),y:GY+r*(CELL+GAP),w:CELL,h:CELL};
+}
+
+function renderGrid(){
+  gCtx.fillStyle='#090914';
+  gCtx.fillRect(0,0,700,590);
+
+  // ── FG: BOSS aura over consumed (left) columns ──────
+  if(game.fgMode && game.fgBossCol>0){
+    const activeCols=COLS-game.fgBossCol;
+    const activeW=activeCols*CELL+(activeCols-1)*GAP;
+    const bossAreaW=700-activeW;
+
+    // Dark gradient sweep
+    const grad=gCtx.createLinearGradient(0,0,bossAreaW,0);
+    grad.addColorStop(0,'rgba(10,0,20,.98)');
+    grad.addColorStop(0.6,'rgba(40,0,60,.92)');
+    grad.addColorStop(1,'rgba(80,10,30,.75)');
+    gCtx.fillStyle=grad;
+    gCtx.fillRect(0,0,bossAreaW,590);
+
+    // Animated glowing eyes for each consumed column
+    const now=Date.now();
+    for(let i=0;i<game.fgBossCol;i++){
+      const eyeG=0.55+0.45*Math.sin(now*.003+i*1.2);
+      const ex=(i+0.5)*(bossAreaW/game.fgBossCol);
+      const ey=180+i*60;
+      gCtx.shadowBlur=18*eyeG; gCtx.shadowColor='#ff2020';
+      gCtx.fillStyle=`rgba(255,40,40,${eyeG})`;
+      gCtx.fillRect(ex-14,ey,12,9);
+      gCtx.fillRect(ex+2,ey,12,9);
+      gCtx.shadowBlur=0;
+      // Claw marks
+      gCtx.strokeStyle=`rgba(160,20,20,${0.3+eyeG*.2})`;
+      gCtx.lineWidth=1.5;
+      for(let s=0;s<3;s++){
+        const sx=ex-20+s*10;
+        gCtx.beginPath();
+        gCtx.moveTo(sx,ey+20);
+        gCtx.lineTo(sx+6,ey+50);
+        gCtx.stroke();
+      }
+    }
+
+    // Jagged crimson edge at BOSS boundary
+    const edgeX=bossAreaW;
+    const edgeGrad=gCtx.createLinearGradient(edgeX-20,0,edgeX+10,0);
+    edgeGrad.addColorStop(0,'rgba(180,10,10,.0)');
+    edgeGrad.addColorStop(0.5,'rgba(220,20,20,.7)');
+    edgeGrad.addColorStop(1,'rgba(255,30,30,.0)');
+    gCtx.fillStyle=edgeGrad;
+    gCtx.fillRect(edgeX-18,0,28,590);
+    // Bright edge line
+    gCtx.shadowBlur=14; gCtx.shadowColor='#ff2020';
+    gCtx.fillStyle='rgba(255,50,50,.85)';
+    gCtx.fillRect(edgeX-1,0,2,590);
+    gCtx.shadowBlur=0;
+  }
+
+  // FG mode background tint on active area
+  if(game.fgMode){
+    const activeCols=COLS-game.fgBossCol;
+    const activeW=activeCols*CELL+(activeCols-1)*GAP;
+    const startX=700-activeW;
+    gCtx.fillStyle='rgba(80,20,0,.12)';
+    gCtx.fillRect(startX,0,activeW,590);
+  }
+  // Fire skill: red tint this round (active area only)
+  if(game.fireActive){
+    gCtx.fillStyle='rgba(200,30,10,.18)';
+    gCtx.fillRect(0,0,700,590);
+  }
+
+  // Cell backgrounds — only active cols
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(game.fgMode && c<game.fgBossCol) continue; // consumed, skip
+    const {x,y,w,h}=cellRect(r,c);
+    gCtx.fillStyle='rgba(55,45,85,.5)';
+    gCtx.fillRect(x,y,w,h);
+    gCtx.strokeStyle='rgba(140,120,190,.25)';
+    gCtx.lineWidth=1;
+    gCtx.strokeRect(x,y,w,h);
+  }
+
+  // Anticipation highlight (1-col reveal) — uses rightmost active col (COLS-1)
+  if(game.revealAnticRow>=0 && game.fgMode){
+    const revCol=COLS-1; // col 4, the last standing column
+    const {x,y,w,h}=cellRect(game.revealAnticRow,revCol);
+    const pulse=0.5+0.5*Math.sin(Date.now()*0.01);
+    gCtx.strokeStyle=`rgba(255,200,50,${pulse})`;
+    gCtx.lineWidth=5;
+    gCtx.shadowBlur=24*pulse;
+    gCtx.shadowColor='#ffd040';
+    gCtx.strokeRect(x-2,y-2,w+4,h+4);
+    gCtx.shadowBlur=0; gCtx.lineWidth=1;
+    gCtx.fillStyle=`rgba(255,200,50,${pulse*.15})`;
+    gCtx.fillRect(x,y,w,h);
+  }
+
+  // Win beam + highlights
+  if(game.winLines.length>0&&game.winBeamProg>0){
+    const minActiveCol=game.fgBossCol;
+    const maxActiveCol=COLS-1;
+    const sweep=Math.floor(game.winBeamProg*(maxActiveCol-minActiveCol+1));
+    const reachedCol=maxActiveCol-sweep;
+    game.winLines.forEach(win=>{
+      const pulse=.3+.2*Math.sin(Date.now()*.008);
+      win.cells.forEach(([r,c])=>{
+        if(c>=reachedCol){
+          const {x,y,w,h}=cellRect(r,c);
+          gCtx.fillStyle=win.isWild?`rgba(255,200,0,${pulse*.5})`:`rgba(100,180,255,${pulse*.4})`;
+          gCtx.fillRect(x,y,w,h);
+          gCtx.shadowBlur=win.isWild?14:8;
+          gCtx.shadowColor=win.isWild?'#ffd040':'#80c0ff';
+          gCtx.strokeStyle=win.isWild?'#ffd040':'#60a0ff';
+          gCtx.lineWidth=2.5;
+          gCtx.strokeRect(x,y,w,h);
+          gCtx.shadowBlur=0; gCtx.lineWidth=1;
+        }
+      });
+      const reached=win.cells.filter(([r,c])=>c>=reachedCol);
+      if(reached.length>1){
+        gCtx.save();
+        gCtx.shadowBlur=win.isWild?18:10;
+        gCtx.shadowColor=win.isWild?'#ffd040':'#80c0ff';
+        gCtx.strokeStyle=win.isWild?'#ffd040':'#80c0ff';
+        gCtx.lineWidth=win.isWild?4:2;
+        gCtx.globalAlpha=.75;
+        gCtx.beginPath();
+        reached.forEach(([r,c],idx)=>{
+          const {x,y,w,h}=cellRect(r,c);
+          const cx=x+w/2,cy=y+h/2;
+          idx===0?gCtx.moveTo(cx,cy):gCtx.lineTo(cx,cy);
+        });
+        gCtx.stroke();
+        gCtx.restore();
+      }
+    });
+  }
+
+  // Symbols — active cols only; A/B/C rendered at 0.7 inner scale
+  if(!game.grid) return;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(game.fgMode && c<game.fgBossCol) continue; // consumed col
+    const cell=game.grid[r][c];
+    if(!cell) continue;
+    const {x,y,w,h}=cellRect(r,c);
+    const cs=game.cellState?.[r]?.[c]??{alpha:1,spawnProg:1,scale:1,glow:0,elimAlpha:1};
+    const sp=cs.spawnProg;
+
+    if(cs.elimAlpha<1) gCtx.globalAlpha=cs.elimAlpha;
+    if(sp<1){
+      gCtx.save();
+      const revH=h*sp;
+      gCtx.beginPath(); gCtx.rect(x-2,y+h-revH,w+4,revH+2); gCtx.clip();
+    }
+
+    // Symbol size tiers: A/B/C=50%, D/E=80%, WILD/CAT=100%
+    let innerScale=1.0;
+    if(!isWild(cell.sym)&&cell.sym!==SYM.CAT){
+      innerScale=cell.sym<=SYM.C?0.5:0.8;
+    }
+    drawSymbol(gCtx,cell.sym,x,y,w,h,cs.alpha*cs.elimAlpha,cs.scale,cs.glow>0,cell.depleted,innerScale);
+
+    if(sp<1) gCtx.restore();
+    gCtx.globalAlpha=1;
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.12; p.life-=p.decay;
+    if(p.life<=0){particles.splice(i,1);continue;}
+    gCtx.globalAlpha=p.life*.85;
+    gCtx.fillStyle=p.color;
+    gCtx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    gCtx.globalAlpha=1;
+  }
+
+  // Direction label
+  const activeLbl=game.fgMode
+    ?`FG ▪ BOSS 佔 ${game.fgBossCol} 欄 ▪ 剩 ${COLS-game.fgBossCol} 欄 ▪ 需 ${COLS-game.fgBossCol}-連`
+    :'← 中獎方向 C5→C1 ▪ 20 條 Payline ▪ 必須 5 連';
+  gCtx.fillStyle=game.fgMode?'rgba(255,150,100,.6)':'rgba(180,160,220,.3)';
+  gCtx.font='11px Courier New';
+  gCtx.textAlign='center';
+  gCtx.fillText(activeLbl,350,GY-20);
+
+  // ── Combo counter top-right (Req 8) ──────────────────────────────────
+  if(game.cascadeCount>=2){
+    const comboTxt=`${game.cascadeCount} COMBO!`;
+    const comboSz=Math.min(28+game.cascadeCount*2,40);
+    const pulse=0.82+0.18*Math.sin(Date.now()*0.01);
+    gCtx.save();
+    gCtx.textAlign='right';
+    gCtx.font=`bold ${comboSz}px Courier New`;
+    gCtx.shadowBlur=20;
+    gCtx.shadowColor='#ff6020';
+    gCtx.globalAlpha=pulse;
+    // outline
+    gCtx.strokeStyle='#5a1800';
+    gCtx.lineWidth=4;
+    gCtx.strokeText(comboTxt,692,140);
+    gCtx.fillStyle='#ffb040';
+    gCtx.fillText(comboTxt,692,140);
+    gCtx.shadowBlur=0;
+    gCtx.globalAlpha=1;
+    gCtx.restore();
+  }
+  // ─────────────────────────────────────────────────────────────────────
+}
+
+// ═══════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════
+let lastTs=0;
+function gameLoop(ts){
+  const dt=Math.min((ts-lastTs)/1000,.05);
+  lastTs=ts;
+  const spd=game.speedMode?2:1;
+
+  game.bossFrame++;
+  game.mageFrame++;
+  game.castPhase=Math.max(0,game.castPhase-dt*1.8*spd);
+  game.hitFlash=Math.max(0,game.hitFlash-dt*3*spd);
+  game.shieldFlash=Math.max(0,game.shieldFlash-dt*2*spd);
+  game.bossRoar=Math.max(0,game.bossRoar-dt*.5);
+
+  if(game.winBeamProg<1&&game.winLines.length){
+    game.winBeamProg=Math.min(1,game.winBeamProg+dt*1.4*spd);
+  }
+
+  if(game.cellState){
+    for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+      const cs=game.cellState[r][c];
+      if(cs.spawnProg<1){
+        cs.spawnProg=Math.min(1,cs.spawnProg+dt/(SPAWN_DURATION*.85)*spd);
+        cs.alpha=Math.min(1,cs.spawnProg*1.5);
+      }
+      if(cs.scale>1) cs.scale=Math.max(1,cs.scale-dt*4*spd);
+      if(cs.glow>0) cs.glow=Math.max(0,cs.glow-dt*2*spd);
+    }
+  }
+
+  renderGrid();
+  drawBoss(bCtx,game.bossFrame,game.hitFlash,game.shieldFlash,game.bossRoar,game.fgMode);
+
+  // ── Damage hit-numbers on BOSS canvas (Req 7) ─────────────────────────
+  const _now=Date.now();
+  while(game.bossHitQueue.length&&_now>=game.bossHitQueue[0].time){
+    const item=game.bossHitQueue.shift();
+    game.bossHitNumbers.push({
+      value:item.value,
+      x:70+Math.random()*160,
+      y:110+Math.random()*60,
+      alpha:1,
+      vy:-0.85-Math.random()*0.5,
+      vx:-0.4+Math.random()*0.8
+    });
+  }
+  for(let _i=game.bossHitNumbers.length-1;_i>=0;_i--){
+    const _n=game.bossHitNumbers[_i];
+    _n.x+=_n.vx; _n.y+=_n.vy; _n.alpha-=0.011;
+    if(_n.alpha<=0){game.bossHitNumbers.splice(_i,1);continue;}
+    bCtx.save();
+    bCtx.globalAlpha=_n.alpha;
+    const _big=_n.value>=32;
+    bCtx.shadowBlur=_big?16:8;
+    bCtx.shadowColor=_big?'#ff8040':'#ffd040';
+    bCtx.fillStyle=_n.value>=80?'#ff5020':_big?'#ffb040':'#ffd040';
+    bCtx.font=`bold ${_n.value>=80?27:_big?22:18}px Courier New`;
+    bCtx.textAlign='center';
+    bCtx.fillText(`+${_n.value}`,_n.x,_n.y);
+    bCtx.shadowBlur=0;
+    bCtx.restore();
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  drawMage(mCtx,game.mageFrame,game.castPhase,game.castStrong);
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════
+function updateUI(){
+  document.getElementById('balDisplay').textContent=game.balance.toLocaleString();
+  document.getElementById('betDisplay').textContent=getBet();
+  document.getElementById('winDisplay').textContent=game.totalWin>0?game.totalWin.toLocaleString():'—';
+
+  // Top bar: shield (NG) vs BOSS HP (FG)
+  if(game.fgMode){
+    document.getElementById('tbIcon').textContent='❤️';
+    document.getElementById('tbLabel').textContent='BOSS HP';
+    const hpPct=game.bossHp;
+    document.getElementById('barFill').style.width=hpPct+'%';
+    document.getElementById('barFill').classList.add('hp');
+    document.getElementById('barVal').textContent=`${game.bossHp} HP`;
+  } else {
+    document.getElementById('tbIcon').textContent='🛡';
+    document.getElementById('tbLabel').textContent='BOSS 防護罩破損率';
+    const pct=Math.round(game.shieldDmg);
+    document.getElementById('barFill').style.width=pct+'%';
+    document.getElementById('barFill').classList.remove('hp');
+    document.getElementById('barVal').textContent=pct+'%';
+  }
+
+  // WILD pts
+  document.getElementById('wildFill').style.width=(game.wildPts/300*100)+'%';
+  document.getElementById('wildCounter').textContent=`${game.wildPts} / 300`;
+
+  // Spin button
+  const canSpin=game.state==='IDLE'&&(game.fgMode||game.balance>=getBet()*20);
+  document.getElementById('spinBtn').disabled=!canSpin;
+
+  // BET
+  document.getElementById('betMinus').disabled=game.state!=='IDLE'||game.betIdx===0;
+  document.getElementById('betPlus').disabled=game.state!=='IDLE'||game.betIdx===BET_VALUES.length-1;
+
+  updateSkillUI();
+
+  // FG indicators
+  if(game.fgMode){
+    document.getElementById('freeSpin').textContent=`⭐ FREE SPIN × ${game.fgSpinsLeft}`;
+    document.getElementById('fgSpinCounter').textContent=`FREE × ${game.fgSpinsLeft}`;
+  }
+}
+
+function updateSkillUI(){
+  const charges=getSkillCharges();
+  const fireBtn=document.getElementById('fireBtn');
+  const iceBtn=document.getElementById('iceBtn');
+  const canUse=charges>0&&game.state==='IDLE';
+  fireBtn.classList.toggle('available',canUse&&game.fireQueued===0);
+  iceBtn.classList.toggle('available',canUse&&game.iceQueued===0);
+  fireBtn.classList.toggle('queued',game.fireQueued>0);
+  iceBtn.classList.toggle('queued',game.iceQueued>0);
+  fireBtn.disabled=!canUse;
+  iceBtn.disabled=!canUse;
+}
+
+function showMsg(msg,duration=1800){
+  const el=document.getElementById('msgOverlay');
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.style.display='none',duration);
+}
+
+// ═══════════════════════════════════════════════════════
+// SPIN SEQUENCE
+// ═══════════════════════════════════════════════════════
+async function doSpin(){
+  if(game.state!=='IDLE') return;
+
+  // 1-col reveal (special FG spin — only 1 active column left)
+  if(game.fgMode && (COLS-game.fgBossCol)===1){
+    game.state='SPINNING';
+    updateUI();
+    await performLastColReveal();
+    game.state='IDLE';
+    updateUI();
+    if(game.autoSpin && game.fgMode){
+      await sleep(game.speedMode?300:600);
+      doSpin();
+    }
+    return;
+  }
+
+  const cost=game.fgMode?0:getBet()*20;
+  if(game.balance<cost&&!game.fgMode){showMsg('餘額不足！');return;}
+
+  getAC(); startBGM(); playClick();
+  game.balance-=cost;
+  game.totalWin=0;
+  game.state='SPINNING';
+  game.winLines=[];
+  game.winBeamProg=0;
+  game.cascadeCount=0;  // reset combo counter for this spin
+  document.getElementById('winDisplay').textContent='—';
+
+  // Consume queued skills at spin start
+  game.fireActive=game.fireQueued>0;
+  game.fireQueued=0;
+  if(game.iceQueued>0){
+    game.iceNextWildBonus+=2*game.iceQueued;
+    game.iceQueued=0;
+  }
+
+  tryAutoSkill();
+  updateUI();
+
+  // Build new grid
+  initGrid();
+  // FG: null out consumed left columns
+  if(game.fgMode){
+    for(let r=0;r<ROWS;r++)
+      for(let c=0;c<game.fgBossCol;c++)
+        game.grid[r][c]=null;
+  }
+  initCellStates(true);
+  await spawnAll();
+  await cascadeLoop();
+
+  // ── Req 1: FG BOSS HP hit 0 → early FG end + remaining-spin bonus ──────
+  if(game.fgMode && game.bossHp<=0){
+    game.fireActive=false;
+    const remainingSpins=game.fgSpinsLeft-1; // spins NOT played
+    if(remainingSpins>0){
+      const bonus=Math.round(game.fgTotalWin*remainingSpins*0.3);
+      game.balance+=bonus;
+      game.totalWin+=bonus;
+      game.fgTotalWin+=bonus;
+      updateUI();
+      showMsg(`💀 BOSS 血量歸零！\n剩餘 ${remainingSpins} 次 Spin ×0.3 → +${bonus.toLocaleString()} 獎金！`,2800);
+    } else {
+      showMsg(`💀 BOSS 血量歸零！`,2000);
+    }
+    game.state='IDLE';
+    await sleep(2900);
+    endFGMode();
+    showMsg('回到 NG',1500);
+    updateUI();
+    if(game.autoSpin){await sleep(600);doSpin();}
+    return;
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  // FG spin bookkeeping
+  if(game.fgMode){
+    game.fgSpinsDone++;
+    game.fgSpinsLeft--;
+    // BOSS moves forward after spin 2+ (fgSpinsDone>=2)
+    if(game.fgSpinsDone>=2 && game.fgBossCol<4){
+      game.fgBossCol++;
+      game.bossRoar=0.8;
+      playRoar();
+      const remaining=COLS-game.fgBossCol;
+      showMsg(remaining>1
+        ?`⚠️ BOSS 前進！剩餘 ${remaining} 欄 / 需 ${remaining}-連中獎`
+        :`⚠️ BOSS 逼近！最後 1 欄！`,
+        1200);
+      await sleep(1200);
+    }
+    if(game.fgSpinsLeft<=0){
+      showMsg('回到 NG',2000);
+      await sleep(2000);
+      endFGMode();
+    }
+  }
+
+  game.fireActive=false;
+  game.state='IDLE';
+  updateUI();
+
+  // Auto spin continue
+  if(game.autoSpin){
+    const canContinue=game.fgMode||game.balance>=getBet()*20;
+    if(canContinue){
+      await sleep(game.speedMode?300:600);
+      doSpin();
+    } else {
+      game.autoSpin=false;
+      const btn=document.getElementById('autoSpinBtn');
+      btn.textContent='AUTO';
+      btn.classList.remove('on');
+      showMsg('餘額不足，停止 Auto Spin');
+    }
+  }
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ═══════════════════════════════════════════════════════
+// RESPONSIVE SCALING
+// ═══════════════════════════════════════════════════════
+function scaleGame(){
+  const root=document.getElementById('gameRoot');
+  const sx=window.innerWidth/1280, sy=window.innerHeight/720;
+  const s=Math.min(sx,sy);
+  root.style.transform=`scale(${s})`;
+  root.style.transformOrigin='top left';
+  root.style.left=`${(window.innerWidth-1280*s)/2}px`;
+  root.style.top=`${(window.innerHeight-720*s)/2}px`;
+}
+window.addEventListener('resize',scaleGame);
+
+// ═══════════════════════════════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════════════════════════════
+document.getElementById('spinBtn').addEventListener('click',doSpin);
+
+document.getElementById('betMinus').addEventListener('click',()=>{
+  if(game.betIdx>0){game.betIdx--;playClick();updateUI();}
+});
+document.getElementById('betPlus').addEventListener('click',()=>{
+  if(game.betIdx<BET_VALUES.length-1){game.betIdx++;playClick();updateUI();}
+});
+
+document.getElementById('fireBtn').addEventListener('click',()=>{
+  if(getSkillCharges()<1||game.state!=='IDLE') return;
+  playClick();
+  if(game.fireQueued>0){game.fireQueued=0;game.wildPts=Math.min(300,game.wildPts+SKILL_COST);}
+  else if(spendSkill()){game.fireQueued++;}
+  updateSkillUI(); updateUI();
+});
+
+document.getElementById('iceBtn').addEventListener('click',()=>{
+  if(game.state!=='IDLE') return;
+  if(game.iceQueued>0){
+    game.iceQueued=0; game.wildPts=Math.min(300,game.wildPts+SKILL_COST);
+    playClick();
+  } else if(getSkillCharges()>0&&spendSkill()){
+    game.iceQueued++; playClick();
+  }
+  updateSkillUI(); updateUI();
+});
+
+document.getElementById('autoSkillBtn').addEventListener('click',()=>{
+  game.autoSkill=!game.autoSkill;
+  const btn=document.getElementById('autoSkillBtn');
+  btn.textContent=game.autoSkill?'AUTO SKILL ON':'AUTO SKILL OFF';
+  btn.classList.toggle('on',game.autoSkill);
+  playClick();
+});
+
+document.getElementById('autoSpinBtn').addEventListener('click',()=>{
+  if(game.state!=='IDLE') return;
+  game.autoSpin=!game.autoSpin;
+  const btn=document.getElementById('autoSpinBtn');
+  btn.textContent='AUTO';
+  btn.classList.toggle('on',game.autoSpin);
+  playClick();
+  if(game.autoSpin) doSpin();
+});
+
+document.getElementById('speedBtn')?.addEventListener('click',()=>{
+  game.speedMode=!game.speedMode;
+  const btn=document.getElementById('speedBtn');
+  if(btn){btn.textContent=game.speedMode?'⚡ FAST':'⚡ NORMAL';btn.classList.toggle('on',game.speedMode);}
+  playClick();
+});
+
+document.getElementById('soundBtn')?.addEventListener('click',()=>{
+  soundEnabled=!soundEnabled;
+  const btn=document.getElementById('soundBtn');
+  if(btn) btn.textContent=soundEnabled?'🔊':'🔇';
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+(async function init(){
+  await preloadAllArt();
+  document.getElementById('assetLoadingOverlay').style.display='none';
+  scaleGame();
+  initGrid();
+  initCellStates(false);
+  updateUI();
+  requestAnimationFrame(ts=>{lastTs=ts;gameLoop(ts);});
+})();
+</script>
+</body>
+</html>
