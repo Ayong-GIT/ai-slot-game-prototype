@@ -407,7 +407,7 @@ function animFrameIndex(frames, fps=8){
 // 中獎連線得分數字：逐字圖片組合（0-9），素材不齊全時 fallback 回 fillText
 function drawScoreNumber(ctx, value, x, y){
   const big = value>=32, huge = value>=80;
-  const glyphH = huge?27:big?22:18;
+  const glyphH = (huge?27:big?22:18)*3; // 2026-07-12: 3x size per request
   const chars = `${value}`.split('');
   const glyphSets = chars.map(c => ART.hitNumbers[c]);
   const allLoaded = glyphSets.every(g => g && g.length);
@@ -500,19 +500,22 @@ function playSpawn() {
   g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+.4);
   o.start(); o.stop(ac.currentTime+.4);
 }
-function playWin(isWild, isStrong) {
+// C-E-G 琶音往上疊三個八度；COMBO 數決定要彈幾個音，COMBO 越高琶音越長、音域越高、音量越大
+const WIN_ARPEGGIO = [523,659,784,1047,1319,1568,2093,2637,3136];
+function playWin(isWild, isStrong, combo=1) {
   if (!soundEnabled) return;
   const ac = getAC();
-  const freqs = isWild
-    ? (isStrong ? [523,659,784,1047,1319,1568] : [523,659,784,1047,1319])
-    : [523,659,784,1047];
+  const noteCount = Math.min(3+combo, WIN_ARPEGGIO.length);
+  const freqs = WIN_ARPEGGIO.slice(0, noteCount);
+  if (isStrong) freqs.push(freqs[freqs.length-1]*2);
+  const vol = Math.min(0.09+combo*0.006, 0.16);
   freqs.forEach((f,i) => {
     const o = ac.createOscillator(), g = ac.createGain();
     o.type = isWild ? 'sawtooth' : 'sine';
     o.connect(g); g.connect(ac.destination);
     o.frequency.value = f;
-    const t = ac.currentTime + i * .08;
-    g.gain.setValueAtTime(isWild ? .11 : .09, t);
+    const t = ac.currentTime + i * .07;
+    g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(.001, t+.28);
     o.start(t); o.stop(t+.3);
   });
@@ -1103,7 +1106,7 @@ async function cascadeLoop() {
     game.castStrong=isStrongWin;
     game.hitFlash=isStrongWin?1:0.7;
     game.shieldFlash=isStrongWin?1:0.6;
-    playWin(hasWild,isStrongWin);
+    playWin(hasWild,isStrongWin,game.cascadeCount);
 
     const winCells=getWinCells(wins);
     winCells.forEach(key=>{
@@ -1560,38 +1563,28 @@ function renderGrid(){
     gCtx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
     gCtx.globalAlpha=1;
   }
+}
 
-  // Direction label
-  const activeLbl=game.fgMode
-    ?`FG ▪ BOSS 佔 ${game.fgBossCol} 欄 ▪ 剩 ${COLS-game.fgBossCol} 欄 ▪ 需 ${COLS-game.fgBossCol}-連`
-    :'← 中獎方向 C5→C1 ▪ 20 條 Payline ▪ 必須 5 連';
-  gCtx.fillStyle=game.fgMode?'rgba(255,150,100,.6)':'rgba(180,160,220,.3)';
-  gCtx.font='11px Courier New';
-  gCtx.textAlign='center';
-  gCtx.fillText(activeLbl,350,GY-20);
-
-  // ── Combo counter top-right (Req 8) ──────────────────────────────────
-  if(game.cascadeCount>=2){
-    const comboTxt=`${game.cascadeCount} COMBO!`;
-    const comboSz=Math.min(28+game.cascadeCount*2,40);
-    const pulse=0.82+0.18*Math.sin(Date.now()*0.01);
-    gCtx.save();
-    gCtx.textAlign='right';
-    gCtx.font=`bold ${comboSz}px Courier New`;
-    gCtx.shadowBlur=20;
-    gCtx.shadowColor='#ff6020';
-    gCtx.globalAlpha=pulse;
-    // outline
-    gCtx.strokeStyle='#5a1800';
-    gCtx.lineWidth=4;
-    gCtx.strokeText(comboTxt,692,140);
-    gCtx.fillStyle='#ffb040';
-    gCtx.fillText(comboTxt,692,140);
-    gCtx.shadowBlur=0;
-    gCtx.globalAlpha=1;
-    gCtx.restore();
-  }
-  // ─────────────────────────────────────────────────────────────────────
+// COMBO 視覺效果：畫在法師（主角）畫布最上方，且在 drawMage() 之後呼叫，圖層蓋在主角上方
+function drawComboEffect(ctx){
+  if(game.cascadeCount<2) return;
+  const comboTxt=`${game.cascadeCount} COMBO!`;
+  const comboSz=Math.min(28+game.cascadeCount*2,40);
+  const pulse=0.82+0.18*Math.sin(Date.now()*0.01);
+  ctx.save();
+  ctx.textAlign='center';
+  ctx.font=`bold ${comboSz}px Courier New`;
+  ctx.shadowBlur=20;
+  ctx.shadowColor='#ff6020';
+  ctx.globalAlpha=pulse;
+  ctx.strokeStyle='#5a1800';
+  ctx.lineWidth=4;
+  ctx.strokeText(comboTxt,140,40);
+  ctx.fillStyle='#ffb040';
+  ctx.fillText(comboTxt,140,40);
+  ctx.shadowBlur=0;
+  ctx.globalAlpha=1;
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1657,6 +1650,7 @@ function gameLoop(ts){
   // ────────────────────────────────────────────────────────────────────────
 
   drawMage(mCtx,game.mageFrame,game.castPhase,game.castStrong);
+  drawComboEffect(mCtx);
   requestAnimationFrame(gameLoop);
 }
 
@@ -1932,8 +1926,8 @@ const PAYTABLE_ROWS = [
   {sym:SYM.C, label:'低分符號 C（紅色史萊姆）'},
   {sym:SYM.D, label:'高分符號 D（斧兵骷髏）'},
   {sym:SYM.E, label:'高分符號 E（弓兵骷髏）'},
-  {sym:SYM.SW, label:'小 WILD（魔法陣）'},
-  {sym:SYM.BW, label:'大 WILD（魔法陣）'},
+  {sym:SYM.SW, label:'小 WILD（怪物魔核）'},
+  {sym:SYM.BW, label:'大 WILD（怪物魔核）'},
 ];
 function buildPaytableRows(){
   const container = document.getElementById('paytableRows');
