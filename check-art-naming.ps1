@@ -7,10 +7,13 @@
 $base = Join-Path $PSScriptRoot "Art_Sources"
 
 $expected = @(
-  "symbols/A_goblin/idle","symbols/B_bat/idle","symbols/C_skeleton/idle","symbols/D_darkknight/idle",
-  "symbols/E_lich/idle","symbols/SW_small_wild/idle","symbols/BW_big_wild/idle","symbols/CAT_charm/idle",
+  "symbols/A_slime_yellow/idle","symbols/B_slime_green/idle","symbols/C_slime_red/idle","symbols/D_skeleton_axe/idle",
+  "symbols/E_skeleton_bow/idle","symbols/SW_small_wild/idle","symbols/BW_big_wild/idle","symbols/CAT_charm/idle",
   "boss/idle","boss/hit","boss/roar","boss/fg_mode",
-  "mage/idle","mage/cast","mage/cast_strong"
+  "mage/idle","mage/cast","mage/cast_strong",
+  "background/ng","background/fg",
+  "hit_numbers/plus","hit_numbers/0","hit_numbers/1","hit_numbers/2","hit_numbers/3","hit_numbers/4",
+  "hit_numbers/5","hit_numbers/6","hit_numbers/7","hit_numbers/8","hit_numbers/9"
 )
 
 $problems = @()

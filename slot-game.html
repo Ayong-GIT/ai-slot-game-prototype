@@ -36,19 +36,22 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
 /* ── CONTENT AREA ───────────────────── */
 #contentArea{position:absolute;left:0;top:40px;width:100%;height:590px;display:flex;}
 
+/* Shared NG/FG background — spans all 3 zones, sits behind everything below */
+#bgCanvas{position:absolute;left:0;top:0;width:1280px;height:590px;z-index:0;display:block;}
+
 /* BOSS ZONE */
-#bossZone{width:300px;height:590px;flex-shrink:0;background:linear-gradient(135deg,#0d1a10,#0a1208);border-right:1px solid rgba(80,160,80,.15);position:relative;overflow:hidden;}
+#bossZone{width:300px;height:590px;flex-shrink:0;border-right:1px solid rgba(80,160,80,.15);position:relative;z-index:1;overflow:hidden;}
 #bossCanvas{display:block;}
 
 /* GRID ZONE */
-#gridZone{flex:1;height:590px;background:linear-gradient(180deg,#090914,#0c0c1e);position:relative;overflow:hidden;}
+#gridZone{flex:1;height:590px;position:relative;z-index:1;overflow:hidden;}
 #gridCanvas{display:block;}
 
 /* Pixel-art fidelity when #gameRoot is CSS-scaled to fit the visitor's window (scaleGame()) */
-#bossCanvas,#gridCanvas,#mageCanvas{image-rendering:pixelated;image-rendering:crisp-edges;}
+#bgCanvas,#bossCanvas,#gridCanvas,#mageCanvas{image-rendering:pixelated;image-rendering:crisp-edges;}
 
 /* MAGE ZONE */
-#mageZone{width:280px;height:590px;flex-shrink:0;background:linear-gradient(135deg,#0e0e28,#0b0b20);border-left:1px solid rgba(80,80,200,.15);display:flex;flex-direction:column;}
+#mageZone{width:280px;height:590px;flex-shrink:0;border-left:1px solid rgba(80,80,200,.15);display:flex;flex-direction:column;position:relative;z-index:1;}
 #wildSection{
   height:180px;flex-shrink:0;padding:14px 12px 10px;
   border-bottom:1px solid rgba(140,100,220,.2);
@@ -181,6 +184,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
 
   <!-- CONTENT -->
   <div id="contentArea">
+    <canvas id="bgCanvas" width="1280" height="590"></canvas>
     <div id="bossZone"><canvas id="bossCanvas" width="300" height="590"></canvas></div>
     <div id="gridZone"><canvas id="gridCanvas" width="700" height="590"></canvas></div>
     <div id="mageZone">
@@ -253,7 +257,7 @@ const GX = 0;
 const GY = 87; // (590 - (3*132+2*10)) / 2 = 87
 
 const SYM = { A:0, B:1, C:2, D:3, E:4, SW:5, BW:6, CAT:7 };
-const SYM_COLORS = ['#40c060','#4080ff','#c0c0c0','#8040c0','#d040d0','#40e0e0','#ffd040','#ff88dd'];
+const SYM_COLORS = ['#f0c020','#40c060','#e04030','#c0c0c0','#c8c0b0','#40e0e0','#ffd040','#ff88dd'];
 
 // ═══════════════════════════════════════════════════════
 // ASSET LOADER — 探測式讀取 Art_Sources 內的逐格動畫序列圖
@@ -263,13 +267,15 @@ const ART_BASE = 'Art_Sources';
 const ART_MAX_FRAMES = 120;
 
 const SYMBOL_FOLDERS = {
-  [SYM.A]:'A_goblin', [SYM.B]:'B_bat', [SYM.C]:'C_skeleton', [SYM.D]:'D_darkknight',
-  [SYM.E]:'E_lich', [SYM.SW]:'SW_small_wild', [SYM.BW]:'BW_big_wild', [SYM.CAT]:'CAT_charm'
+  [SYM.A]:'A_slime_yellow', [SYM.B]:'B_slime_green', [SYM.C]:'C_slime_red', [SYM.D]:'D_skeleton_axe',
+  [SYM.E]:'E_skeleton_bow', [SYM.SW]:'SW_small_wild', [SYM.BW]:'BW_big_wild', [SYM.CAT]:'CAT_charm'
 };
 const BOSS_STATES = ['idle','hit','roar','fg_mode'];
 const MAGE_STATES = ['idle','cast','cast_strong'];
+const BG_STATES = ['ng','fg']; // one combined 3-zone (1280×590) background image per mode
+const HITNUM_KEYS = ['plus','0','1','2','3','4','5','6','7','8','9']; // BOSS hit-number digit glyphs
 
-const ART = { symbols:{}, boss:{}, mage:{} };
+const ART = { symbols:{}, boss:{}, mage:{}, background:{}, hitNumbers:{} };
 
 function loadOneImage(src){
   return new Promise(resolve=>{
@@ -301,6 +307,12 @@ async function preloadAllArt(){
   for (const state of MAGE_STATES){
     stateJobs.push([`${ART_BASE}/mage/${state}`, frames=>{ ART.mage[state] = frames; }]);
   }
+  for (const state of BG_STATES){
+    stateJobs.push([`${ART_BASE}/background/${state}`, frames=>{ ART.background[state] = frames; }]);
+  }
+  for (const key of HITNUM_KEYS){
+    stateJobs.push([`${ART_BASE}/hit_numbers/${key}`, frames=>{ ART.hitNumbers[key] = frames; }]);
+  }
   let loaded = 0;
   const total = stateJobs.length;
   const label = document.getElementById('assetLoadingLabel');
@@ -313,6 +325,34 @@ async function preloadAllArt(){
 
 function animFrameIndex(frames, fps=8){
   return Math.floor(performance.now()/1000*fps) % frames.length;
+}
+
+// BOSS 受擊數字：逐字圖片組合（0-9 + "+"），素材不齊全時 fallback 回 fillText
+function drawHitNumber(ctx, value, x, y){
+  const big = value>=32, huge = value>=80;
+  const glyphH = huge?27:big?22:18;
+  const chars = `+${value}`.split('');
+  const glyphKeyOf = c => c==='+' ? 'plus' : c;
+  const glyphSets = chars.map(c => ART.hitNumbers[glyphKeyOf(c)]);
+  const allLoaded = glyphSets.every(g => g && g.length);
+  ctx.shadowBlur = big?16:8;
+  ctx.shadowColor = big?'#ff8040':'#ffd040';
+  if (allLoaded){
+    const imgs = glyphSets.map(g => g[animFrameIndex(g)]);
+    const widths = imgs.map(img => img.naturalWidth * (glyphH/img.naturalHeight));
+    const totalW = widths.reduce((a,b)=>a+b,0);
+    let cx = x - totalW/2;
+    for (let i=0;i<imgs.length;i++){
+      ctx.drawImage(imgs[i], cx, y-glyphH, widths[i], glyphH);
+      cx += widths[i];
+    }
+  } else {
+    ctx.fillStyle = value>=80?'#ff5020':big?'#ffb040':'#ffd040';
+    ctx.font = `bold ${glyphH}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`+${value}`, x, y);
+  }
+  ctx.shadowBlur = 0;
 }
 const PAYOUTS5 = [8, 8, 12, 24, 32, 16, 28, 0]; // SYM order; CAT has no payline payout (≈40% of original → RTP ~95%)
 
@@ -480,30 +520,40 @@ function drawSymbol(ctx, sym, x, y, w, h, alpha=1, scale=1, glow=false, depleted
   const pw=w/14, ph=h/14;
   const r=(bx,by,bw,bh,c)=>{ctx.fillStyle=c; ctx.fillRect(x+bx*pw,y+by*ph,bw*pw,bh*ph);};
   switch(sym){
-    case SYM.A: // GOBLIN
-      r(3,0,8,2,'#208040');
-      r(2,1,10,7,'#30c060');
-      r(0,3,3,4,'#28a050'); r(11,3,3,4,'#28a050');
-      r(3,3,2,2,'#ff2020'); r(9,3,2,2,'#ff2020');
-      r(4,7,6,2,'#28a050');
-      r(3,8,8,4,'#30c060');
-      r(1,9,3,4,'#208040'); r(10,9,3,4,'#208040');
-      r(5,11,2,3,'#28a050'); r(7,11,2,3,'#28a050');
-      r(10,6,4,6,'#c09030');
-      ctx.fillStyle='#30c060'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+    case SYM.A: // YELLOW SLIME
+      r(5,3,4,1,'#f0c020');
+      r(3,4,8,1,'#f0c020');
+      r(2,5,10,1,'#f0c020');
+      r(1,6,12,5,'#f0c020');
+      r(2,11,10,1,'#c89010');
+      r(3,5,3,2,'#fce080');
+      r(4,8,2,2,'#1a1408'); r(8,8,2,2,'#1a1408');
+      r(5,10,4,1,'#c89010');
+      ctx.fillStyle='#f0c020'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
       ctx.fillText('A',cx,y+h-2); break;
-    case SYM.B: // BAT
-      r(0,3,5,6,'#1a3090'); r(9,3,5,6,'#1a3090');
-      r(1,1,4,4,'#1a2070'); r(9,1,4,4,'#1a2070');
-      r(0,5,3,3,'#304090'); r(11,5,3,3,'#304090');
-      r(4,2,6,5,'#2040b0');
-      r(5,1,4,3,'#2848c0');
-      r(5,2,2,2,'#ff3030'); r(7,2,2,2,'#ff3030');
-      r(5,4,2,2,'#ffffff'); r(7,4,2,2,'#ffffff');
-      r(5,7,4,3,'#1a3080');
-      ctx.fillStyle='#2848c0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+    case SYM.B: // GREEN SLIME
+      r(5,3,4,1,'#40c060');
+      r(3,4,8,1,'#40c060');
+      r(2,5,10,1,'#40c060');
+      r(1,6,12,5,'#40c060');
+      r(2,11,10,1,'#288040');
+      r(3,5,3,2,'#90eeb0');
+      r(4,8,2,2,'#0a2010'); r(8,8,2,2,'#0a2010');
+      r(5,10,4,1,'#288040');
+      ctx.fillStyle='#40c060'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
       ctx.fillText('B',cx,y+h-2); break;
-    case SYM.C: // SKELETON
+    case SYM.C: // RED SLIME
+      r(5,3,4,1,'#e04030');
+      r(3,4,8,1,'#e04030');
+      r(2,5,10,1,'#e04030');
+      r(1,6,12,5,'#e04030');
+      r(2,11,10,1,'#a02010');
+      r(3,5,3,2,'#ff9080');
+      r(4,8,2,2,'#200806'); r(8,8,2,2,'#200806');
+      r(5,10,4,1,'#a02010');
+      ctx.fillStyle='#e04030'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('C',cx,y+h-2); break;
+    case SYM.D: // AXE SKELETON (斧兵骷髏)
       r(4,0,6,5,'#d0d0d0');
       r(4,1,2,2,'#0d0a1a'); r(8,1,2,2,'#0d0a1a');
       r(5,3,4,1,'#b0b0b0');
@@ -511,36 +561,30 @@ function drawSymbol(ctx, sym, x, y, w, h, alpha=1, scale=1, glow=false, depleted
       r(5,5,4,5,'#c0c0c0');
       r(3,6,3,1,'#b0b0b0'); r(8,6,3,1,'#b0b0b0');
       r(3,7,2,1,'#a0a0a0'); r(9,7,2,1,'#a0a0a0');
-      r(1,5,4,6,'#c0c0c0'); r(9,5,4,6,'#c0c0c0');
-      r(3,10,3,4,'#b0b0b0'); r(8,10,3,4,'#b0b0b0');
-      r(11,0,2,8,'#8080ff'); r(10,1,3,1,'#c0c0ff');
+      r(1,5,3,7,'#c0c0c0');
+      r(9,5,3,3,'#c0c0c0');
+      r(3,11,3,3,'#b0b0b0'); r(7,11,3,3,'#b0b0b0');
+      r(10,1,2,9,'#805030');
+      r(11,0,3,2,'#b0b8c8'); r(12,2,2,2,'#d0d8e8');
+      ctx.shadowBlur=6; ctx.shadowColor='#d0d8e8';
+      r(11,0,1,1,'#f0f4fa'); ctx.shadowBlur=0;
       ctx.fillStyle='#c0c0c0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
-      ctx.fillText('C',cx,y+h-2); break;
-    case SYM.D: // DARK KNIGHT
-      r(3,0,8,3,'#5030a0'); r(4,1,6,2,'#200840');
-      r(3,2,2,1,'#ff2040'); r(9,2,1,1,'#ff2040');
-      r(2,3,3,2,'#6040b0'); r(9,3,3,2,'#6040b0');
-      r(1,4,3,8,'#4030a0'); r(10,4,3,8,'#4030a0');
-      r(4,4,6,8,'#4030a0'); r(5,6,4,4,'#300060');
-      r(5,7,4,1,'#8060e0'); r(6,6,2,1,'#8060e0');
-      r(4,11,3,3,'#302080'); r(7,11,3,3,'#302080');
-      r(12,0,2,9,'#8080c0'); r(10,1,4,1,'#c0c0ff'); r(12,9,3,2,'#604020');
-      ctx.fillStyle='#8060e0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
       ctx.fillText('D',cx,y+h-2); break;
-    case SYM.E: // LICH
-      r(4,0,2,2,'#ffd040'); r(8,0,2,2,'#ffd040'); r(6,0,2,1,'#ffd040');
-      r(3,1,8,4,'#d0d0a0');
-      r(3,2,2,2,'#8020a0'); r(9,2,2,2,'#8020a0');
-      r(5,4,2,1,'#7030a0'); r(7,4,2,1,'#7030a0');
-      r(2,4,10,8,'#8020a0');
-      r(0,6,3,6,'#600080'); r(11,6,3,6,'#600080');
-      r(4,6,6,4,'#6010a0');
-      r(5,7,4,1,'#c060ff'); r(6,6,2,3,'#c060ff');
-      r(3,11,3,3,'#701090'); r(8,11,3,3,'#701090');
-      r(11,0,2,9,'#804010');
-      ctx.shadowBlur=14; ctx.shadowColor='#c060ff';
-      r(9,0,4,3,'#c060ff'); ctx.shadowBlur=0;
-      ctx.fillStyle='#c040e0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
+    case SYM.E: // BOW SKELETON (弓兵骷髏)
+      r(4,0,6,5,'#d8d0c0');
+      r(4,1,2,2,'#0d0a1a'); r(8,1,2,2,'#0d0a1a');
+      r(5,3,4,1,'#b8b0a0');
+      r(5,4,2,1,'#0d0a1a'); r(7,4,2,1,'#0d0a1a');
+      r(5,5,4,5,'#c8c0b0');
+      r(3,6,3,1,'#b8b0a0'); r(8,6,3,1,'#b8b0a0');
+      r(3,7,2,1,'#a8a090'); r(9,7,2,1,'#a8a090');
+      r(9,5,4,6,'#c8c0b0');
+      r(3,10,3,4,'#b8b0a0'); r(8,10,3,4,'#b8b0a0');
+      r(1,4,2,6,'#603818'); r(1,4,2,1,'#805020');
+      r(0,3,1,2,'#906030'); r(0,5,1,2,'#a87840'); r(0,7,1,2,'#a87840'); r(0,9,1,2,'#906030');
+      r(1,2,1,1,'#906030'); r(1,10,1,1,'#906030');
+      ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(x+1*pw,y+3*ph,1*pw,7*ph);
+      ctx.fillStyle='#c8c0b0'; ctx.font=`bold ${ph*1.4}px monospace`; ctx.textAlign='center';
       ctx.fillText('E',cx,y+h-2); break;
     case SYM.SW: { // SMALL WILD
       const wcx=cx, wcy=y+h/2-6, wr=w*.34;
@@ -1217,15 +1261,37 @@ function addParticles(cx,cy,color,count,big){
 // ═══════════════════════════════════════════════════════
 // RENDERING
 // ═══════════════════════════════════════════════════════
+const bgCvs=document.getElementById('bgCanvas');
+const bgCtx=bgCvs.getContext('2d');
 const gridCvs=document.getElementById('gridCanvas');
 const gCtx=gridCvs.getContext('2d');
 const bossCvs=document.getElementById('bossCanvas');
 const bCtx=bossCvs.getContext('2d');
 const mageCvs=document.getElementById('mageCanvas');
 const mCtx=mageCvs.getContext('2d');
+bgCtx.imageSmoothingEnabled=false;
 gCtx.imageSmoothingEnabled=false;
 bCtx.imageSmoothingEnabled=false;
 mCtx.imageSmoothingEnabled=false;
+
+// 三欄合一的 NG/FG 背景層，畫在最底層；沒有素材時 fallback 回原本三段式漸層
+function drawBackground(isFGMode){
+  const frames = ART.background[isFGMode?'fg':'ng'];
+  if (frames && frames.length){
+    bgCtx.clearRect(0,0,1280,590);
+    bgCtx.drawImage(frames[animFrameIndex(frames)], 0, 0, 1280, 590);
+    return;
+  }
+  let g = bgCtx.createLinearGradient(0,0,300,590);
+  g.addColorStop(0,'#0d1a10'); g.addColorStop(1,'#0a1208');
+  bgCtx.fillStyle=g; bgCtx.fillRect(0,0,300,590);
+  g = bgCtx.createLinearGradient(0,0,0,590);
+  g.addColorStop(0,'#090914'); g.addColorStop(1,'#0c0c1e');
+  bgCtx.fillStyle=g; bgCtx.fillRect(300,0,700,590);
+  g = bgCtx.createLinearGradient(1000,0,1280,590);
+  g.addColorStop(0,'#0e0e28'); g.addColorStop(1,'#0b0b20');
+  bgCtx.fillStyle=g; bgCtx.fillRect(1000,0,280,590);
+}
 
 function cellRect(r,c){
   if(game.fgMode && game.fgBossCol>0){
@@ -1240,8 +1306,7 @@ function cellRect(r,c){
 }
 
 function renderGrid(){
-  gCtx.fillStyle='#090914';
-  gCtx.fillRect(0,0,700,590);
+  gCtx.clearRect(0,0,700,590); // base look now comes from the shared bgCanvas underneath
 
   // ── FG: BOSS aura over consumed (left) columns ──────
   if(game.fgMode && game.fgBossCol>0){
@@ -1480,6 +1545,7 @@ function gameLoop(ts){
     }
   }
 
+  drawBackground(game.fgMode);
   renderGrid();
   drawBoss(bCtx,game.bossFrame,game.hitFlash,game.shieldFlash,game.bossRoar,game.fgMode);
 
@@ -1502,14 +1568,7 @@ function gameLoop(ts){
     if(_n.alpha<=0){game.bossHitNumbers.splice(_i,1);continue;}
     bCtx.save();
     bCtx.globalAlpha=_n.alpha;
-    const _big=_n.value>=32;
-    bCtx.shadowBlur=_big?16:8;
-    bCtx.shadowColor=_big?'#ff8040':'#ffd040';
-    bCtx.fillStyle=_n.value>=80?'#ff5020':_big?'#ffb040':'#ffd040';
-    bCtx.font=`bold ${_n.value>=80?27:_big?22:18}px Courier New`;
-    bCtx.textAlign='center';
-    bCtx.fillText(`+${_n.value}`,_n.x,_n.y);
-    bCtx.shadowBlur=0;
+    drawHitNumber(bCtx, _n.value, _n.x, _n.y);
     bCtx.restore();
   }
   // ────────────────────────────────────────────────────────────────────────
