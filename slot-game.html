@@ -778,17 +778,6 @@ function drawBoss(ctx, frame, hitFlash, shieldFlash, isRoar, isFGMode) {
     B(5,34,5,12,'#2a0040'); B(12,34,5,12,'#2a0040');
     B(5,44,5,4,'#400060'); B(12,44,5,4,'#400060');
   }
-
-  if (isRoar) {
-    const shake=Math.sin(frame*.5)*6*isRoar;
-    ctx.save(); ctx.translate(shake,0);
-    ctx.fillStyle=`rgba(255,80,20,${isRoar*.3})`; ctx.fillRect(bx,by,22*P,48*P);
-    ctx.restore();
-  }
-  if (hitFlash>0) {
-    ctx.fillStyle=`rgba(255,120,80,${hitFlash*.35})`;
-    ctx.fillRect(bx,by-8*P,22*P,56*P);
-  }
 }
 
 // ═══════════════════════════════════════════════════════
