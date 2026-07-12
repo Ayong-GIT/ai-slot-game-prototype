@@ -1226,6 +1226,17 @@ function endFGMode() {
   updateUI();
 }
 
+// FG 結束後，若玩家開著 Auto，倒數 5 秒讓玩家看清楚結算，再自動回到 NG 繼續 Auto Spin
+// 避免卡在 FG 結算畫面（僅在 autoSpin 開啟時執行；手動模式維持原樣，由玩家自行按 SPIN）
+async function autoContinueAfterFG() {
+  if (!game.autoSpin) return;
+  for (let s=5; s>=1; s--) {
+    showMsg(`Auto Spin 將於 ${s} 秒後繼續...`, 1100);
+    await sleep(1000);
+  }
+  if (game.autoSpin) doSpin(); // re-check: player may have turned Auto off during the countdown
+}
+
 async function pixelFGTransition() {
   const oc=document.getElementById('fgTransition');
   oc.style.display='block';
@@ -1254,11 +1265,15 @@ async function performLastColReveal() {
   const catRow=hasCat?Math.floor(Math.random()*ROWS):-1;
   const revCol=COLS-1; // col 4 — last standing column
 
-  // Set col 4 cells (hidden initially)
+  // Set col 4 cells (hidden initially). spawnProg starts at 1 (not 0) so the
+  // generic per-frame spawn-reveal ticker in gameLoop() — which auto-advances
+  // ANY cell with spawnProg<1 — doesn't prematurely reveal rows before their
+  // own turn in the anticipation sequence below; spawnCell() resets it to 0
+  // exactly when a row's real reveal should start.
   for(let r=0;r<ROWS;r++){
     const sym=(hasCat&&r===catRow)?SYM.CAT:randSym(0.55);
     game.grid[r][revCol]={sym,wildUses:0,depleted:false};
-    game.cellState[r][revCol]={alpha:0,spawnProg:0,scale:1,glow:0,elimAlpha:1};
+    game.cellState[r][revCol]={alpha:0,spawnProg:1,scale:1,glow:0,elimAlpha:1};
   }
 
   // Reveal each row with anticipation
@@ -1724,10 +1739,7 @@ async function doSpin(){
     await performLastColReveal();
     game.state='IDLE';
     updateUI();
-    if(game.autoSpin && game.fgMode){
-      await sleep(game.speedMode?300:600);
-      doSpin();
-    }
+    await autoContinueAfterFG();
     return;
   }
 
@@ -1785,7 +1797,7 @@ async function doSpin(){
     endFGMode();
     showMsg('回到 NG',1500);
     updateUI();
-    if(game.autoSpin){await sleep(600);doSpin();}
+    await autoContinueAfterFG();
     return;
   }
   // ────────────────────────────────────────────────────────────────────────
