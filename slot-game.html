@@ -179,6 +179,14 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
 .pt-row canvas{flex-shrink:0;background:rgba(0,0,0,.3);border-radius:4px;}
 .pt-row .pt-label{flex:1;}
 .pt-row .pt-mult{color:#ffd040;font-weight:bold;min-width:50px;text-align:right;}
+#lineDiagramRows{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.ld-item{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.04);border-radius:6px;padding:8px 10px;}
+.ld-item canvas{flex-shrink:0;background:rgba(0,0,0,.3);border-radius:4px;}
+.ld-item .ld-info{flex:1;}
+.ld-item .ld-verdict{font-weight:bold;margin-bottom:3px;font-size:12.5px;}
+.ld-item .ld-verdict.win{color:#80c0ff;}
+.ld-item .ld-verdict.lose{color:#ff6060;}
+.ld-item .ld-desc{font-size:11.5px;opacity:.85;line-height:1.5;}
 #trailerLink{
   display:inline-block;margin-top:4px;padding:8px 16px;border-radius:8px;
   background:rgba(255,80,20,.15);border:1.5px solid #ff8020;color:#ffb060;
@@ -288,6 +296,11 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
         <div class="info-section">
           <h3>基本規則</h3>
           <p>盤面 5 欄 × 3 列，共 20 條 Payline，判定方向由右至左（C5→C1）。任一 Payline 上需連續 5 個相同符號（WILD 可替代）才算中獎；本局未中獎即結束（只扣不賺）。</p>
+        </div>
+        <div class="info-section">
+          <h3>連線判斷依據（連線圖）</h3>
+          <p>下方範例示範畫面上的符號分佈在什麼情況算中獎、什麼情況不算，避免誤會「畫面上出現好幾顆一樣的符號」就等於中獎。</p>
+          <div id="lineDiagramRows"></div>
         </div>
         <div class="info-section">
           <h3>符號賠率表（5 連基準，倍率 × 單線投注額）</h3>
@@ -1920,6 +1933,175 @@ document.getElementById('soundBtn')?.addEventListener('click',()=>{
 // ═══════════════════════════════════════════════════════
 // INFO PANEL
 // ═══════════════════════════════════════════════════════
+// 連線判斷依據：每格 grid[r][c] 的 c 對應真實盤面欄位（c=0 為 C1／最左，c=4 為 C5／最右，
+// 判定方向為 C5→C1），示範「中獎」與「畫面像中獎但其實不算」兩種情況。
+const LINE_DIAGRAM_EXAMPLES = [
+  {
+    verdict:'win',
+    title:'✅ 中獎範例 1：橫線 Payline',
+    desc:'中間列（Row 2）由 C5 連續對齊到 C1，5 顆都是同一符號，符合其中一條固定 Payline，判定中獎。',
+    grid:[
+      [SYM.D,SYM.B,SYM.E,SYM.A,SYM.C],
+      [SYM.A,SYM.A,SYM.A,SYM.A,SYM.A],
+      [SYM.C,SYM.E,SYM.B,SYM.D,SYM.A],
+    ],
+    winCells:[[1,4],[1,3],[1,2],[1,1],[1,0]],
+  },
+  {
+    verdict:'win',
+    title:'✅ 中獎範例 2：之字形 Payline ＋ WILD',
+    desc:'Payline 不一定是直線，也可能是 V 字、Z 字等固定路徑；只要沿線由 C5 到 C1 連續相同（WILD 可替代低分符號 A/B/C）一樣算中獎。',
+    grid:[
+      [SYM.B,SYM.D,SYM.C,SYM.E,SYM.B],
+      [SYM.E,SYM.SW,SYM.D,SYM.B,SYM.C],
+      [SYM.D,SYM.C,SYM.B,SYM.A,SYM.E],
+    ],
+    winCells:[[0,4],[1,3],[2,2],[1,1],[0,0]],
+  },
+  {
+    verdict:'lose',
+    title:'❌ 不中獎範例 1：同符號散落各處',
+    desc:'畫面上出現 5 顆弓兵骷髏（E），但它們沒有沿著同一條 Payline 從 C5 連續排列到 C1，所以不算中獎——「同符號出現次數」不等於「連線中獎」。',
+    grid:[
+      [SYM.E,SYM.D,SYM.A,SYM.E,SYM.C],
+      [SYM.B,SYM.E,SYM.C,SYM.A,SYM.E],
+      [SYM.E,SYM.A,SYM.D,SYM.B,SYM.D],
+    ],
+    markCells:[[0,0],[0,3],[1,1],[1,4],[2,0]],
+  },
+  {
+    verdict:'lose',
+    title:'❌ 不中獎範例 2：中途斷線',
+    desc:'從 C5 開始算，C5-C3 連續 3 顆同符號，但 C2 出現不同符號就中斷了；即使 C1 又出現同符號也無法接續計算，因為判定必須「從 C5 起連續不中斷」。',
+    grid:[
+      [SYM.D,SYM.A,SYM.D,SYM.D,SYM.D],
+      [SYM.D,SYM.A,SYM.D,SYM.D,SYM.D],
+      [SYM.A,SYM.E,SYM.C,SYM.B,SYM.C],
+    ],
+    partialCells:[[1,4],[1,3],[1,2]],
+    breakCell:[1,1],
+    deadCells:[[1,0]],
+  },
+];
+const LD_CW=32, LD_CH=32, LD_GAP=4, LD_CANVAS_W=LD_CW*5+LD_GAP*4, LD_CANVAS_H=LD_CH*3+LD_GAP*2+14;
+function buildLineDiagrams(){
+  const container=document.getElementById('lineDiagramRows');
+  if(container.childElementCount) return; // build DOM once, re-render each open
+  LINE_DIAGRAM_EXAMPLES.forEach(ex=>{
+    const item=document.createElement('div');
+    item.className='ld-item';
+    const cvs=document.createElement('canvas');
+    cvs.width=LD_CANVAS_W; cvs.height=LD_CANVAS_H;
+    const info=document.createElement('div');
+    info.className='ld-info';
+    const verdictEl=document.createElement('div');
+    verdictEl.className='ld-verdict '+ex.verdict;
+    verdictEl.textContent=ex.title;
+    const descEl=document.createElement('div');
+    descEl.className='ld-desc';
+    descEl.textContent=ex.desc;
+    info.append(verdictEl,descEl);
+    item.append(cvs,info);
+    container.appendChild(item);
+  });
+}
+function renderLineDiagrams(){
+  const canvases=document.querySelectorAll('#lineDiagramRows canvas');
+  LINE_DIAGRAM_EXAMPLES.forEach((ex,i)=>{
+    const ctx=canvases[i].getContext('2d');
+    ctx.imageSmoothingEnabled=false;
+    ctx.clearRect(0,0,LD_CANVAS_W,LD_CANVAS_H);
+    const cellXY=(r,c)=>[c*(LD_CW+LD_GAP), r*(LD_CH+LD_GAP)];
+    // base grid + symbols
+    for(let r=0;r<3;r++) for(let c=0;c<5;c++){
+      const [x,y]=cellXY(r,c);
+      ctx.fillStyle='rgba(255,255,255,.05)';
+      ctx.fillRect(x,y,LD_CW,LD_CH);
+      const sym=ex.grid[r][c];
+      const innerScale=isWild(sym)?0.9:(sym<=SYM.C?0.55:0.8);
+      drawSymbol(ctx,sym,x,y,LD_CW,LD_CH,1,1,false,false,innerScale);
+    }
+    // winning cells: highlight + connector line (matches in-game win style)
+    if(ex.winCells){
+      ex.winCells.forEach(([r,c])=>{
+        const [x,y]=cellXY(r,c);
+        ctx.fillStyle='rgba(100,180,255,.35)';
+        ctx.fillRect(x,y,LD_CW,LD_CH);
+        ctx.strokeStyle='#60a0ff'; ctx.lineWidth=2;
+        ctx.strokeRect(x,y,LD_CW,LD_CH);
+      });
+      ctx.save();
+      ctx.strokeStyle='#80c0ff'; ctx.lineWidth=2.5; ctx.globalAlpha=.85;
+      ctx.beginPath();
+      ex.winCells.forEach(([r,c],idx)=>{
+        const [x,y]=cellXY(r,c);
+        const cx=x+LD_CW/2, cy=y+LD_CH/2;
+        idx===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+    // scattered "looks like a match but isn't" cells: red dashed ring, no connector
+    if(ex.markCells){
+      ex.markCells.forEach(([r,c])=>{
+        const [x,y]=cellXY(r,c);
+        ctx.save();
+        ctx.strokeStyle='#ff5050'; ctx.lineWidth=2; ctx.setLineDash([3,3]);
+        ctx.beginPath(); ctx.arc(x+LD_CW/2,y+LD_CH/2,LD_CW*0.42,0,Math.PI*2); ctx.stroke();
+        ctx.restore();
+      });
+    }
+    // broken-line example: partial match (amber) + break point (red X) + dead cell (dimmed)
+    if(ex.partialCells){
+      ex.partialCells.forEach(([r,c])=>{
+        const [x,y]=cellXY(r,c);
+        ctx.fillStyle='rgba(255,180,60,.3)';
+        ctx.fillRect(x,y,LD_CW,LD_CH);
+        ctx.strokeStyle='#ffb040'; ctx.lineWidth=2;
+        ctx.strokeRect(x,y,LD_CW,LD_CH);
+      });
+      ctx.save();
+      ctx.strokeStyle='#ffb040'; ctx.lineWidth=2.5; ctx.globalAlpha=.85;
+      ctx.beginPath();
+      ex.partialCells.forEach(([r,c],idx)=>{
+        const [x,y]=cellXY(r,c);
+        const cx=x+LD_CW/2, cy=y+LD_CH/2;
+        idx===0?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(ex.breakCell){
+      const [r,c]=ex.breakCell;
+      const [x,y]=cellXY(r,c);
+      ctx.fillStyle='rgba(255,60,60,.35)';
+      ctx.fillRect(x,y,LD_CW,LD_CH);
+      ctx.strokeStyle='#ff4040'; ctx.lineWidth=2.5;
+      ctx.strokeRect(x,y,LD_CW,LD_CH);
+      ctx.beginPath();
+      ctx.moveTo(x+6,y+6); ctx.lineTo(x+LD_CW-6,y+LD_CH-6);
+      ctx.moveTo(x+LD_CW-6,y+6); ctx.lineTo(x+6,y+LD_CH-6);
+      ctx.stroke();
+    }
+    if(ex.deadCells){
+      ex.deadCells.forEach(([r,c])=>{
+        const [x,y]=cellXY(r,c);
+        ctx.save();
+        ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+        ctx.strokeRect(x+1,y+1,LD_CW-2,LD_CH-2);
+        ctx.restore();
+      });
+    }
+    // column labels C1..C5 along the bottom (real-screen column order)
+    ctx.fillStyle='rgba(230,220,250,.55)';
+    ctx.font='9px Courier New';
+    ctx.textAlign='center';
+    for(let c=0;c<5;c++){
+      const [x]=cellXY(0,c);
+      ctx.fillText('C'+(c+1), x+LD_CW/2, LD_CANVAS_H-3);
+    }
+  });
+}
 const PAYTABLE_ROWS = [
   {sym:SYM.A, label:'低分符號 A（黃色史萊姆）'},
   {sym:SYM.B, label:'低分符號 B（綠色史萊姆）'},
@@ -1960,6 +2142,8 @@ function renderPaytableIcons(){
 document.getElementById('menuBtn').addEventListener('click',()=>{
   buildPaytableRows();
   renderPaytableIcons();
+  buildLineDiagrams();
+  renderLineDiagrams();
   document.getElementById('infoOverlay').style.display='flex';
   playClick();
 });

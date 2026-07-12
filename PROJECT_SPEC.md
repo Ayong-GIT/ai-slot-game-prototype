@@ -360,6 +360,11 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 5. 中獎連線得分數字（`drawScoreNumber`）字體尺寸放大為原本的 3 倍。
 6. 中獎音效 `playWin()` 改以本次連鎖的 COMBO 數（`game.cascadeCount`）決定琶音音符數量、音域與音量——COMBO 越高，音符越多、音域越高越響，取代原本單純依賴 WILD/大獎判斷的音效分級；WILD/大獎判斷保留為音色（sawtooth）與額外高音點綴，不再是音效強度的主要依據。
 
+**2026-07-12 更新：遊戲資訊面板新增「連線判斷依據（連線圖）」**
+
+- 新增 `LINE_DIAGRAM_EXAMPLES`（4 組範例：橫線 Payline 中獎、之字形 Payline＋WILD 替代中獎、同符號散落各處不中獎、C5→C1 途中斷線不中獎），以小型格線圖示搭配與遊戲內中獎連線相同的高亮／連接線視覺樣式呈現，說明「畫面上出現多顆同符號」不等於「連線中獎」的判定邏輯，避免玩家誤會。
+- 對應 `buildLineDiagrams()` / `renderLineDiagrams()`，於開啟「遊戲資訊」面板時（`menuBtn` click）與賠率表圖示一併建立、重繪；區塊置於「基本規則」之後、賠率表之前。
+
 ---
 
 ## 10. 視覺 / 動畫規格
