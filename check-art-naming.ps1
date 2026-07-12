@@ -12,7 +12,7 @@ $expected = @(
   "boss/idle","boss/hit","boss/roar","boss/fg_mode",
   "mage/idle","mage/cast","mage/cast_strong",
   "background/ng","background/fg",
-  "hit_numbers/plus","hit_numbers/0","hit_numbers/1","hit_numbers/2","hit_numbers/3","hit_numbers/4",
+  "hit_numbers/0","hit_numbers/1","hit_numbers/2","hit_numbers/3","hit_numbers/4",
   "hit_numbers/5","hit_numbers/6","hit_numbers/7","hit_numbers/8","hit_numbers/9"
 )
 

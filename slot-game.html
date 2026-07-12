@@ -150,6 +150,41 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
   pointer-events:none;display:none;z-index:30;text-shadow:0 0 12px #c080ff;
 }
 #fgTransition{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:20;display:none;}
+
+/* ── INFO PANEL ─────────────────────── */
+#infoOverlay{
+  position:absolute;left:0;top:0;width:100%;height:100%;z-index:40;display:none;
+  background:rgba(5,3,10,.75);align-items:center;justify-content:center;
+}
+#infoPanel{
+  width:760px;max-height:640px;background:#1a0f2ef5;border:2px solid #c080ff;border-radius:12px;
+  display:flex;flex-direction:column;box-shadow:0 0 40px rgba(160,100,255,.35);
+}
+#infoHeader{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid rgba(200,160,255,.25);flex-shrink:0;
+}
+#infoHeader h2{color:#e0d0ff;font-size:18px;letter-spacing:1px;text-shadow:0 0 10px #c080ff;}
+#infoCloseBtn{
+  width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(200,160,255,.4);
+  background:rgba(50,30,80,.7);color:#e0d0ff;font-size:15px;cursor:pointer;
+}
+#infoCloseBtn:hover{background:rgba(80,50,120,.9);}
+#infoBody{overflow-y:auto;padding:18px 22px;color:rgba(230,220,250,.9);font-size:13px;line-height:1.7;}
+.info-section{margin-bottom:18px;}
+.info-section h3{color:#ffd040;font-size:13px;letter-spacing:.5px;margin-bottom:6px;text-transform:uppercase;}
+.info-section p{margin:2px 0;}
+#paytableRows{display:flex;flex-direction:column;gap:6px;}
+.pt-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border-radius:6px;padding:4px 10px;}
+.pt-row canvas{flex-shrink:0;background:rgba(0,0,0,.3);border-radius:4px;}
+.pt-row .pt-label{flex:1;}
+.pt-row .pt-mult{color:#ffd040;font-weight:bold;min-width:50px;text-align:right;}
+#trailerLink{
+  display:inline-block;margin-top:4px;padding:8px 16px;border-radius:8px;
+  background:rgba(255,80,20,.15);border:1.5px solid #ff8020;color:#ffb060;
+  text-decoration:none;font-weight:bold;transition:all .15s;
+}
+#trailerLink:hover{background:rgba(255,80,20,.3);}
 #freeSpin{
   position:absolute;left:50%;top:50px;transform:translateX(-50%);
   background:rgba(30,10,0,.9);border:2px solid #ffd040;border-radius:8px;padding:6px 20px;
@@ -245,6 +280,48 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
   <div id="freeSpin"></div>
 
   <div id="assetLoadingOverlay"><div class="alo-card" id="assetLoadingLabel">載入美術素材中...</div></div>
+
+  <div id="infoOverlay">
+    <div id="infoPanel">
+      <div id="infoHeader"><h2>遊戲資訊</h2><button id="infoCloseBtn">✕</button></div>
+      <div id="infoBody">
+        <div class="info-section">
+          <h3>基本規則</h3>
+          <p>盤面 5 欄 × 3 列，共 20 條 Payline，判定方向由右至左（C5→C1）。任一 Payline 上需連續 5 個相同符號（WILD 可替代）才算中獎；本局未中獎即結束（只扣不賺）。</p>
+        </div>
+        <div class="info-section">
+          <h3>符號賠率表（5 連基準，倍率 × 單線投注額）</h3>
+          <div id="paytableRows"></div>
+        </div>
+        <div class="info-section">
+          <h3>消除連鎖</h3>
+          <p>中獎符號消除後，上方符號下移、新符號由下方補入，可連續觸發多輪中獎，獎金逐波疊加。</p>
+        </div>
+        <div class="info-section">
+          <h3>WILD 機制</h3>
+          <p>WILD 不會由 Spin 直接轉出，只透過消除觸發：低分符號（A/B/C）消除後 30% 機率掉落小 WILD；高分符號（D/E）消除後 10% 機率掉落大 WILD。</p>
+          <p>小 WILD 僅可替代低分符號 A/B/C；大 WILD 可替代所有一般符號。每個 WILD 計入中獎 2 次後失效（變灰暗，下一輪消除時移除）。</p>
+        </div>
+        <div class="info-section">
+          <h3>BOSS 防護罩 / BG 免費模式</h3>
+          <p>每次中獎會為 BOSS 防護罩累積 5% 破損，滿 100% 觸發 BG 模式，獲得 6 局免費 Spin；期間右側欄位每局被 BOSS 逐步壓縮佔據，所需連線數會隨之提高。</p>
+          <p>BG 第 6 局（最後一局）有 20% 機率出現 CAT 護符：一旦出現即直接擊敗 BOSS、結束本輪 BG；若當時 WILD 點數（見下）≥ 100，本輪 BG 總獎金再 ×10。</p>
+        </div>
+        <div class="info-section">
+          <h3>WILD 點數 / 技能</h3>
+          <p>每次 WILD 參與中獎 +10 點（上限 300）。點數每滿 100 可施放一次技能：火技能讓下回合得分 ×1.1；冰技能讓接下來 2 個掉落的 WILD 多 1 次可用次數才失效。可開啟 AUTO SKILL 自動施放。</p>
+        </div>
+        <div class="info-section">
+          <h3>投注設定</h3>
+          <p>單注額度可選：1 / 2 / 5 / 10 / 25 / 50 / 100。</p>
+        </div>
+        <div class="info-section">
+          <h3>遊戲前導片</h3>
+          <a id="trailerLink" href="https://www.youtube.com/watch?v=Sd9aoy-YXtc" target="_blank" rel="noopener noreferrer">▶ 觀看遊戲前導片</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -273,7 +350,7 @@ const SYMBOL_FOLDERS = {
 const BOSS_STATES = ['idle','hit','roar','fg_mode'];
 const MAGE_STATES = ['idle','cast','cast_strong'];
 const BG_STATES = ['ng','fg']; // one combined 3-zone (1280×590) background image per mode
-const HITNUM_KEYS = ['plus','0','1','2','3','4','5','6','7','8','9']; // BOSS hit-number digit glyphs
+const HITNUM_KEYS = ['0','1','2','3','4','5','6','7','8','9']; // 中獎連線得分數字用的數字圖示
 
 const ART = { symbols:{}, boss:{}, mage:{}, background:{}, hitNumbers:{} };
 
@@ -327,13 +404,12 @@ function animFrameIndex(frames, fps=8){
   return Math.floor(performance.now()/1000*fps) % frames.length;
 }
 
-// BOSS 受擊數字：逐字圖片組合（0-9 + "+"），素材不齊全時 fallback 回 fillText
-function drawHitNumber(ctx, value, x, y){
+// 中獎連線得分數字：逐字圖片組合（0-9），素材不齊全時 fallback 回 fillText
+function drawScoreNumber(ctx, value, x, y){
   const big = value>=32, huge = value>=80;
   const glyphH = huge?27:big?22:18;
-  const chars = `+${value}`.split('');
-  const glyphKeyOf = c => c==='+' ? 'plus' : c;
-  const glyphSets = chars.map(c => ART.hitNumbers[glyphKeyOf(c)]);
+  const chars = `${value}`.split('');
+  const glyphSets = chars.map(c => ART.hitNumbers[c]);
   const allLoaded = glyphSets.every(g => g && g.length);
   ctx.shadowBlur = big?16:8;
   ctx.shadowColor = big?'#ff8040':'#ffd040';
@@ -350,7 +426,7 @@ function drawHitNumber(ctx, value, x, y){
     ctx.fillStyle = value>=80?'#ff5020':big?'#ffb040':'#ffd040';
     ctx.font = `bold ${glyphH}px Courier New`;
     ctx.textAlign = 'center';
-    ctx.fillText(`+${value}`, x, y);
+    ctx.fillText(`${value}`, x, y);
   }
   ctx.shadowBlur = 0;
 }
@@ -807,8 +883,8 @@ const game = {
   cellState: null,
   winLines: [], winBeamProg: 0,
   cascadeCount: 0,        // cascade steps in current spin (for combo display)
-  bossHitQueue: [],       // {value, time} — numbers waiting to pop up on boss canvas
-  bossHitNumbers: [],     // {value, x, y, alpha, vy, vx} — currently animating numbers
+  lineScoreQueue: [],     // {value, cells, time} — line scores waiting to pop up on the grid
+  lineScorePopups: [],    // {value, x, y, alpha, vy, vx} — currently animating numbers
 };
 
 function getBet() { return BET_VALUES[game.betIdx]; }
@@ -1060,14 +1136,14 @@ async function cascadeLoop() {
     game.balance+=winAmt;
     if(game.fgMode) game.fgTotalWin+=winAmt;
 
-    // Queue sequential hit-number popups on BOSS canvas (one per winning line, staggered)
+    // Queue sequential score popups on the winning line itself (one per line, staggered)
     {
       const betPerLine=getBet();
       const mult=game.fireActive?1.1:1;
       const queueStart=Date.now()+150;
       wins.forEach((w,i)=>{
         const lineAmt=Math.floor(PAYOUTS5[w.sym]*betPerLine*mult);
-        game.bossHitQueue.push({value:lineAmt, time:queueStart+i*140});
+        game.lineScoreQueue.push({value:lineAmt, cells:w.cells, time:queueStart+i*140});
       });
     }
 
@@ -1549,27 +1625,29 @@ function gameLoop(ts){
   renderGrid();
   drawBoss(bCtx,game.bossFrame,game.hitFlash,game.shieldFlash,game.bossRoar,game.fgMode);
 
-  // ── Damage hit-numbers on BOSS canvas (Req 7) ─────────────────────────
+  // ── Line score popups on the grid canvas, on the winning line itself ──
   const _now=Date.now();
-  while(game.bossHitQueue.length&&_now>=game.bossHitQueue[0].time){
-    const item=game.bossHitQueue.shift();
-    game.bossHitNumbers.push({
+  while(game.lineScoreQueue.length&&_now>=game.lineScoreQueue[0].time){
+    const item=game.lineScoreQueue.shift();
+    const [mr,mc]=item.cells[Math.floor(item.cells.length/2)];
+    const {x:_mx,y:_my,w:_mw,h:_mh}=cellRect(mr,mc);
+    game.lineScorePopups.push({
       value:item.value,
-      x:70+Math.random()*160,
-      y:110+Math.random()*60,
+      x:_mx+_mw/2,
+      y:_my+_mh/2,
       alpha:1,
       vy:-0.85-Math.random()*0.5,
       vx:-0.4+Math.random()*0.8
     });
   }
-  for(let _i=game.bossHitNumbers.length-1;_i>=0;_i--){
-    const _n=game.bossHitNumbers[_i];
+  for(let _i=game.lineScorePopups.length-1;_i>=0;_i--){
+    const _n=game.lineScorePopups[_i];
     _n.x+=_n.vx; _n.y+=_n.vy; _n.alpha-=0.011;
-    if(_n.alpha<=0){game.bossHitNumbers.splice(_i,1);continue;}
-    bCtx.save();
-    bCtx.globalAlpha=_n.alpha;
-    drawHitNumber(bCtx, _n.value, _n.x, _n.y);
-    bCtx.restore();
+    if(_n.alpha<=0){game.lineScorePopups.splice(_i,1);continue;}
+    gCtx.save();
+    gCtx.globalAlpha=_n.alpha;
+    drawScoreNumber(gCtx, _n.value, _n.x, _n.y);
+    gCtx.restore();
   }
   // ────────────────────────────────────────────────────────────────────────
 
@@ -1841,6 +1919,60 @@ document.getElementById('soundBtn')?.addEventListener('click',()=>{
   soundEnabled=!soundEnabled;
   const btn=document.getElementById('soundBtn');
   if(btn) btn.textContent=soundEnabled?'🔊':'🔇';
+});
+
+// ═══════════════════════════════════════════════════════
+// INFO PANEL
+// ═══════════════════════════════════════════════════════
+const PAYTABLE_ROWS = [
+  {sym:SYM.A, label:'低分符號 A（黃色史萊姆）'},
+  {sym:SYM.B, label:'低分符號 B（綠色史萊姆）'},
+  {sym:SYM.C, label:'低分符號 C（紅色史萊姆）'},
+  {sym:SYM.D, label:'高分符號 D（斧兵骷髏）'},
+  {sym:SYM.E, label:'高分符號 E（弓兵骷髏）'},
+  {sym:SYM.SW, label:'小 WILD（魔法陣）'},
+  {sym:SYM.BW, label:'大 WILD（魔法陣）'},
+];
+function buildPaytableRows(){
+  const container = document.getElementById('paytableRows');
+  if (container.childElementCount) return; // build DOM once, re-render icons each open
+  PAYTABLE_ROWS.forEach(({sym,label})=>{
+    const row = document.createElement('div');
+    row.className = 'pt-row';
+    const cvs = document.createElement('canvas');
+    cvs.width = 48; cvs.height = 48;
+    const labelEl = document.createElement('div');
+    labelEl.className = 'pt-label';
+    labelEl.textContent = label;
+    const multEl = document.createElement('div');
+    multEl.className = 'pt-mult';
+    multEl.textContent = `${PAYOUTS5[sym]}×`;
+    row.append(cvs, labelEl, multEl);
+    container.appendChild(row);
+  });
+}
+function renderPaytableIcons(){
+  const canvases = document.querySelectorAll('#paytableRows canvas');
+  PAYTABLE_ROWS.forEach(({sym},i)=>{
+    const ctx = canvases[i].getContext('2d');
+    ctx.imageSmoothingEnabled=false;
+    ctx.clearRect(0,0,48,48);
+    const innerScale = isWild(sym) ? 1.0 : (sym<=SYM.C?0.5:0.8);
+    drawSymbol(ctx, sym, 0, 0, 48, 48, 1, 1, false, false, innerScale);
+  });
+}
+document.getElementById('menuBtn').addEventListener('click',()=>{
+  buildPaytableRows();
+  renderPaytableIcons();
+  document.getElementById('infoOverlay').style.display='flex';
+  playClick();
+});
+document.getElementById('infoCloseBtn').addEventListener('click',()=>{
+  document.getElementById('infoOverlay').style.display='none';
+  playClick();
+});
+document.getElementById('infoOverlay').addEventListener('click',(e)=>{
+  if(e.target.id==='infoOverlay') document.getElementById('infoOverlay').style.display='none';
 });
 
 // ═══════════════════════════════════════════════════════
