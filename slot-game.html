@@ -305,7 +305,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
         <div class="info-section">
           <h3>BOSS 防護罩 / BG 免費模式</h3>
           <p>每次中獎會為 BOSS 防護罩累積 5% 破損，滿 100% 觸發 BG 模式，獲得 6 局免費 Spin；期間右側欄位每局被 BOSS 逐步壓縮佔據，所需連線數會隨之提高。</p>
-          <p>BG 第 6 局（最後一局）有 20% 機率出現 CAT 護符：一旦出現即直接擊敗 BOSS、結束本輪 BG；若當時 WILD 點數（見下）≥ 100，本輪 BG 總獎金再 ×10。</p>
+          <p>BG 第 6 局（最後一局）有 50% 機率出現 CAT 護符：一旦出現即直接擊敗 BOSS、結束本輪 BG；若當時 WILD 點數（見下）≥ 100，本輪 BG 總獎金再 ×10。</p>
         </div>
         <div class="info-section">
           <h3>WILD 點數 / 技能</h3>
@@ -440,6 +440,7 @@ const WILD_PTS_PER_WILD = 10;
 const SKILL_COST = 100;
 const SPAWN_DURATION = 0.45;
 const FG_FREE_SPINS = 6;
+const BOSS_MAX_HP = 200; // 2026-07-06: raised from 100 so BOSS survives longer, giving more players a shot at the spin-6 CAT charm
 
 // 20 Paylines — [row,col] from C5→C1 (col 4→0)
 const PAYLINES = [
@@ -851,7 +852,7 @@ const game = {
   state: 'IDLE',
   grid: null,
   shieldDmg: 0,       // NG mode shield 0–100%
-  bossHp: 100,         // FG mode BOSS HP 100→0
+  bossHp: BOSS_MAX_HP, // FG mode BOSS HP, resets to BOSS_MAX_HP at FG start, counts down to 0
   wildPts: 0,
   fireQueued: 0,
   fireActive: false,   // true during current spin if fire was queued
@@ -1198,7 +1199,7 @@ async function triggerFGMode() {
   game.fgSpinsDone=0;
   game.fgBossCol=0;
   game.fgTotalWin=0;
-  game.bossHp=100;
+  game.bossHp=BOSS_MAX_HP;
   game.shieldDmg=0;
   game.bossRoar=1;
   playRoar();
@@ -1248,8 +1249,8 @@ async function pixelFGTransition() {
 
 // 1-col sequential reveal (Spin 6 in FG)
 async function performLastColReveal() {
-  // Pre-determine cat charm (20%)
-  const hasCat=Math.random()<0.20;
+  // Pre-determine cat charm (50%)
+  const hasCat=Math.random()<0.50;
   const catRow=hasCat?Math.floor(Math.random()*ROWS):-1;
   const revCol=COLS-1; // col 4 — last standing column
 
@@ -1656,7 +1657,7 @@ function updateUI(){
   if(game.fgMode){
     document.getElementById('tbIcon').textContent='❤️';
     document.getElementById('tbLabel').textContent='BOSS HP';
-    const hpPct=game.bossHp;
+    const hpPct=game.bossHp/BOSS_MAX_HP*100;
     document.getElementById('barFill').style.width=hpPct+'%';
     document.getElementById('barFill').classList.add('hp');
     document.getElementById('barVal').textContent=`${game.bossHp} HP`;
