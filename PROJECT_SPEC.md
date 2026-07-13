@@ -370,6 +370,14 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 2. 「連線判斷依據（連線圖）」改版：不再顯示「不中獎」範例，改為直接依 `PAYLINES` 陣列產生全部 20 條 Payline 的路徑示意圖（`buildLineDiagrams()` / `renderLineDiagrams()`），以 4×5 網格排列、每條 Payline 一張小圖，黃色節點＋連接線標示該 Payline 涵蓋的 5 個位置與方向（陣列順序即為判定方向 C5→C1），不再繪製符號圖像，只呈現路徑形狀。
 3. NG 模式的 BOSS idle 由單一狀態改為依防護罩「剩餘」百分比分 4 個階段：`idle_100`／`idle_66`／`idle_33`／`idle_0`，對應 `game.shieldDmg`（0=完好累積損傷值）門檻 <34／<67／<100／=100。素材資料夾對應更新為 `Art_Sources\boss\idle_100\`（沿用原本 2026-07-12 更新的 idle 圖，代表防護罩完好的樣貌）、`idle_66\`、`idle_33\`、`idle_0\`（後三者目前為空，尚未有素材時自動 fallback 回程式生成圖形）。為了讓效果在素材補齊前就有感，程式生成 fallback 也新增依損傷比例疊加「變暗＋裂痕」的視覺差異（`drawBoss()` 內新增區塊，僅在 NG 模式套用）。此變更僅影響 NG 模式待機圖；FG 模式的 `fg_mode`、受擊 `hit`、怒吼 `roar` 三個狀態不受影響。
 
+**2026-07-13 更新：移除 FG BOSS 前進紅色眼睛/爪痕素材、BOSS Hit 圖新增最短停留時間**
+
+- 移除 `renderGrid()` 內 FG 模式 BOSS 佔欄區域的「Animated glowing eyes」與「Claw marks」程式生成裝飾（紅色發光方塊＋爪痕線條），該區域現在只保留原有的深色漸層＋邊界紅色光線，呈現更乾淨的純色背景。
+- 新增 `HIT_ART_MIN_HOLD = 0.3`（秒）與 `game.hitHoldTimer`：每次觸發受擊（一般中獎）時，`hitHoldTimer` 會設為至少 0.3 秒，`drawBoss()` 判斷是否顯示 `hit` 美術狀態時改為 `hitFlash>0.3 || game.hitHoldTimer>0`，確保受擊圖至少可見 0.3 秒，不受 `hitFlash` 原本較快的衰減速度影響；`hitHoldTimer` 的倒數不乘上 `speedMode` 的加速倍率，因此快轉模式下也維持固定 0.3 秒（避免快轉時完全看不到受擊效果）。
+- **BOSS Hit 圖位置偏移（使用者回報，已釐清）**：程式端所有 BOSS 狀態（idle 四階段／hit／roar／fg_mode）本來就用同一組座標＋尺寸繪製，沒有位移/縮放差異；經使用者確認，實際問題並非美術素材偏移，而是 `drawBoss()` 內殘留的舊版程式生成「防護罩受擊光環」——每次觸發 `shieldFlash`（中獎時設定）就會在固定座標 `arc(150,330,140,...)` 畫一圈紅色圓環，這是真實 BOSS 美術素材加入前的暫代效果，疊加在新素材上造成類似「錯位」的觀感。已完全移除：`drawBoss()` 拿掉整個 `shieldFlash` 光環區塊與參數、`game.shieldFlash` 狀態欄位、其設定（中獎時）與衰減（`gameLoop()`）、以及呼叫 `drawBoss()` 時傳入的對應參數，確認全域已無殘留引用。
+- `Art_Sources\boss\hit\` 確認縮回單張靜態圖（僅 `0.png`，先前試過的 4~8 張序列圖已由使用者移除），視為目前正式版本；`animFrameIndex()` 對單張素材本來就會固定顯示同一張，程式端不需改動。
+- 「遊戲前導片」連結網址更新為 `https://youtu.be/PhLMeA3w2Co`（原本是 `https://www.youtube.com/watch?v=Sd9aoy-YXtc`）。
+
 ---
 
 ## 10. 視覺 / 動畫規格

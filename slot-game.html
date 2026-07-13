@@ -291,7 +291,7 @@ body{background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align
       <div id="infoBody">
         <div class="info-section">
           <h3>遊戲前導片</h3>
-          <a id="trailerLink" href="https://www.youtube.com/watch?v=Sd9aoy-YXtc" target="_blank" rel="noopener noreferrer">▶ 觀看遊戲前導片</a>
+          <a id="trailerLink" href="https://youtu.be/PhLMeA3w2Co" target="_blank" rel="noopener noreferrer">▶ 觀看遊戲前導片</a>
         </div>
         <div class="info-section">
           <h3>基本規則</h3>
@@ -452,6 +452,7 @@ const SKILL_COST = 100;
 const SPAWN_DURATION = 0.45;
 const FG_FREE_SPINS = 6;
 const BOSS_MAX_HP = 200; // 2026-07-06: raised from 100 so BOSS survives longer, giving more players a shot at the spin-6 CAT charm
+const HIT_ART_MIN_HOLD = 0.3; // 2026-07-13: 受擊美術狀態至少停留秒數，避免 hitFlash 衰減太快導致看不清楚效果
 
 // 20 Paylines — [row,col] from C5→C1 (col 4→0)
 const PAYLINES = [
@@ -753,7 +754,7 @@ function bossIdleStageKey(){
   if (dmg>=34) return 'idle_66';
   return 'idle_100';
 }
-function drawBoss(ctx, frame, hitFlash, shieldFlash, isRoar, isFGMode) {
+function drawBoss(ctx, frame, hitFlash, isRoar, isFGMode) {
   ctx.clearRect(0,0,300,590);
   const bob=Math.sin(frame*.1)*3;
   const eyeG=.55+.45*Math.sin(frame*.25);
@@ -762,14 +763,7 @@ function drawBoss(ctx, frame, hitFlash, shieldFlash, isRoar, isFGMode) {
 
   if (isFGMode) { ctx.fillStyle='rgba(255,80,0,.08)'; ctx.fillRect(0,0,300,590); }
 
-  if (shieldFlash>0) {
-    ctx.shadowBlur=30*shieldFlash; ctx.shadowColor=`rgba(255,100,50,${shieldFlash})`;
-    ctx.strokeStyle=`rgba(255,80,40,${shieldFlash*.8})`; ctx.lineWidth=4;
-    ctx.beginPath(); ctx.arc(150,330,140,0,Math.PI*2); ctx.stroke();
-    ctx.shadowBlur=0;
-  }
-
-  const bossStateKey = isRoar>0.3 ? 'roar' : hitFlash>0.3 ? 'hit' : isFGMode ? 'fg_mode' : bossIdleStageKey();
+  const bossStateKey = isRoar>0.3 ? 'roar' : (hitFlash>0.3||game.hitHoldTimer>0) ? 'hit' : isFGMode ? 'fg_mode' : bossIdleStageKey();
   const bossFrames = ART.boss[bossStateKey];
   if (bossFrames && bossFrames.length){
     ctx.drawImage(bossFrames[animFrameIndex(bossFrames)], 0, 0, 300, 590);
@@ -910,7 +904,8 @@ const game = {
   speedMode: false,
   bossFrame: 0, mageFrame: 0,
   castPhase: 0, castStrong: false,
-  hitFlash: 0, shieldFlash: 0, bossRoar: 0,
+  hitFlash: 0, bossRoar: 0,
+  hitHoldTimer: 0, // 秒數：確保「受擊」美術狀態至少可見 HIT_ART_MIN_HOLD 秒，不受 hitFlash 衰減速度影響
   cellState: null,
   winLines: [], winBeamProg: 0,
   cascadeCount: 0,        // cascade steps in current spin (for combo display)
@@ -1143,7 +1138,7 @@ async function cascadeLoop() {
     game.castPhase=isStrongWin?1.5:1;
     game.castStrong=isStrongWin;
     game.hitFlash=isStrongWin?1:0.7;
-    game.shieldFlash=isStrongWin?1:0.6;
+    game.hitHoldTimer=Math.max(game.hitHoldTimer,HIT_ART_MIN_HOLD);
     playWin(hasWild,isStrongWin,game.cascadeCount);
 
     const winCells=getWinCells(wins);
@@ -1615,7 +1610,7 @@ function gameLoop(ts){
   game.mageFrame++;
   game.castPhase=Math.max(0,game.castPhase-dt*1.8*spd);
   game.hitFlash=Math.max(0,game.hitFlash-dt*3*spd);
-  game.shieldFlash=Math.max(0,game.shieldFlash-dt*2*spd);
+  game.hitHoldTimer=Math.max(0,game.hitHoldTimer-dt); // 不乘 spd：無論一般/快速模式都至少停留固定秒數
   game.bossRoar=Math.max(0,game.bossRoar-dt*.5);
 
   if(game.winBeamProg<1&&game.winLines.length){
@@ -1636,7 +1631,7 @@ function gameLoop(ts){
 
   drawBackground(game.fgMode);
   renderGrid();
-  drawBoss(bCtx,game.bossFrame,game.hitFlash,game.shieldFlash,game.bossRoar,game.fgMode);
+  drawBoss(bCtx,game.bossFrame,game.hitFlash,game.bossRoar,game.fgMode);
 
   // ── Line score popups on the grid canvas, on the winning line itself ──
   const _now=Date.now();
