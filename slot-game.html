@@ -357,8 +357,8 @@ const SYMBOL_FOLDERS = {
   [SYM.E]:'E_skeleton_bow', [SYM.SW]:'SW_small_wild', [SYM.BW]:'BW_big_wild', [SYM.CAT]:'CAT_charm'
 };
 // NG 模式的 idle 依 BOSS 防護罩「剩餘」百分比分 4 個階段（100/66/33/0%），搭配機制讓畫面更直覺；
-// hit/roar/fg_mode 三個狀態不受影響。
-const BOSS_STATES = ['idle_100','idle_66','idle_33','idle_0','hit','roar','fg_mode'];
+// FG 的 BOSS 是不同型態（見 fg_mode），因此 FG 受擊用獨立的 fg_hit 素材，不共用 NG 的 hit。
+const BOSS_STATES = ['idle_100','idle_66','idle_33','idle_0','hit','fg_hit','roar','fg_mode'];
 const MAGE_STATES = ['idle','cast','cast_strong'];
 const BG_STATES = ['ng','fg']; // one combined 3-zone (1280×590) background image per mode
 const HITNUM_KEYS = ['0','1','2','3','4','5','6','7','8','9']; // 中獎連線得分數字用的數字圖示
@@ -763,7 +763,7 @@ function drawBoss(ctx, frame, hitFlash, isRoar, isFGMode) {
 
   if (isFGMode) { ctx.fillStyle='rgba(255,80,0,.08)'; ctx.fillRect(0,0,300,590); }
 
-  const bossStateKey = isRoar>0.3 ? 'roar' : (hitFlash>0.3||game.hitHoldTimer>0) ? 'hit' : isFGMode ? 'fg_mode' : bossIdleStageKey();
+  const bossStateKey = isRoar>0.3 ? 'roar' : (hitFlash>0.3||game.hitHoldTimer>0) ? (isFGMode?'fg_hit':'hit') : isFGMode ? 'fg_mode' : bossIdleStageKey();
   const bossFrames = ART.boss[bossStateKey];
   if (bossFrames && bossFrames.length){
     ctx.drawImage(bossFrames[animFrameIndex(bossFrames)], 0, 0, 300, 590);

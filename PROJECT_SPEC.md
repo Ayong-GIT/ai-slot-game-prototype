@@ -378,6 +378,11 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 - `Art_Sources\boss\hit\` 確認縮回單張靜態圖（僅 `0.png`，先前試過的 4~8 張序列圖已由使用者移除），視為目前正式版本；`animFrameIndex()` 對單張素材本來就會固定顯示同一張，程式端不需改動。
 - 「遊戲前導片」連結網址更新為 `https://youtu.be/PhLMeA3w2Co`（原本是 `https://www.youtube.com/watch?v=Sd9aoy-YXtc`）。
 
+**2026-07-13 更新：FG 受擊改用獨立美術素材，不再沿用 NG 的 hit**
+
+- FG 模式的 BOSS 是不同型態（`fg_mode` 已有專屬待機美術），因此受擊反應也不應該沿用 NG 的 `hit` 素材。`BOSS_STATES` 新增 `fg_hit`，`drawBoss()` 判斷素材狀態時，若 `isFGMode` 為真且處於受擊狀態（`hitFlash>0.3 || game.hitHoldTimer>0`），改用 `fg_hit` 而非 `hit`；NG 模式受擊行為不變。
+- 新增資料夾 `Art_Sources\boss\fg_hit\`（目前為空），素材補齊前自動 fallback 回程式生成圖形（因 `isFGMode` 已有的紅色濾疊層，procedural fallback 下 NG／FG 受擊觀感已有基本區隔）。
+
 ---
 
 ## 10. 視覺 / 動畫規格
@@ -461,7 +466,7 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 **2026-07-06 更新：方案 A → C 架構升級已完成**
 
 - 新增**方案 C：外部圖檔（Art_Sources，探測式載入）**：`slot-game.html` 現在會在啟動時嘗試從 `Art_Sources\` 讀取逐格動畫序列圖（`0.png, 1.png, ...` 連號），有素材就用 `drawImage` 繪製，資料夾是空的則自動 fallback 回方案 A 的程式繪製像素圖，不會破圖。
-- 分類資料夾：`Art_Sources\symbols\<符號>\idle\`、`Art_Sources\boss\<idle_100|idle_66|idle_33|idle_0|hit|roar|fg_mode>\`（idle 依防護罩剩餘百分比拆成 4 階段，見 2026-07-13 更新）、`Art_Sources\mage\<idle|cast|cast_strong>\`。
+- 分類資料夾：`Art_Sources\symbols\<符號>\idle\`、`Art_Sources\boss\<idle_100|idle_66|idle_33|idle_0|hit|fg_hit|roar|fg_mode>\`（idle 依防護罩剩餘百分比拆成 4 階段、hit 依 NG/FG 分開素材，見 2026-07-13 更新）、`Art_Sources\mage\<idle|cast|cast_strong>\`。
 - 因為是純靜態 HTML、沒有伺服器，程式無法列出資料夾內容，只能逐張探測檔名，因此**新增/替換動畫張數或圖片內容都不必改程式碼**；只有新增全新的符號/狀態種類才需要改程式（`slot-game.html` 內的 `SYMBOL_FOLDERS` / `BOSS_STATES` / `MAGE_STATES`）。
 - BOSS 進 BG 模式 500×500 全尺寸進場、向右壓縮格盤的演出效果**尚未實作**，目前 `fg_mode` 只是套用既有的紅色濾鏡疊加，屬於未來待辦。
 
