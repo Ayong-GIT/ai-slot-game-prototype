@@ -1444,29 +1444,6 @@ function renderGrid(){
     gCtx.fillStyle=grad;
     gCtx.fillRect(0,0,bossAreaW,590);
 
-    // Animated glowing eyes for each consumed column
-    const now=Date.now();
-    for(let i=0;i<game.fgBossCol;i++){
-      const eyeG=0.55+0.45*Math.sin(now*.003+i*1.2);
-      const ex=(i+0.5)*(bossAreaW/game.fgBossCol);
-      const ey=180+i*60;
-      gCtx.shadowBlur=18*eyeG; gCtx.shadowColor='#ff2020';
-      gCtx.fillStyle=`rgba(255,40,40,${eyeG})`;
-      gCtx.fillRect(ex-14,ey,12,9);
-      gCtx.fillRect(ex+2,ey,12,9);
-      gCtx.shadowBlur=0;
-      // Claw marks
-      gCtx.strokeStyle=`rgba(160,20,20,${0.3+eyeG*.2})`;
-      gCtx.lineWidth=1.5;
-      for(let s=0;s<3;s++){
-        const sx=ex-20+s*10;
-        gCtx.beginPath();
-        gCtx.moveTo(sx,ey+20);
-        gCtx.lineTo(sx+6,ey+50);
-        gCtx.stroke();
-      }
-    }
-
     // Jagged crimson edge at BOSS boundary
     const edgeX=bossAreaW;
     const edgeGrad=gCtx.createLinearGradient(edgeX-20,0,edgeX+10,0);
