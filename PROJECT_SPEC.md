@@ -360,10 +360,15 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 5. 中獎連線得分數字（`drawScoreNumber`）字體尺寸放大為原本的 3 倍。
 6. 中獎音效 `playWin()` 改以本次連鎖的 COMBO 數（`game.cascadeCount`）決定琶音音符數量、音域與音量——COMBO 越高，音符越多、音域越高越響，取代原本單純依賴 WILD/大獎判斷的音效分級；WILD/大獎判斷保留為音色（sawtooth）與額外高音點綴，不再是音效強度的主要依據。
 
-**2026-07-12 更新：遊戲資訊面板新增「連線判斷依據（連線圖）」**
+**2026-07-12 更新：遊戲資訊面板新增「連線判斷依據（連線圖）」**（後於 2026-07-13 改版，見下）
 
-- 新增 `LINE_DIAGRAM_EXAMPLES`（4 組範例：橫線 Payline 中獎、之字形 Payline＋WILD 替代中獎、同符號散落各處不中獎、C5→C1 途中斷線不中獎），以小型格線圖示搭配與遊戲內中獎連線相同的高亮／連接線視覺樣式呈現，說明「畫面上出現多顆同符號」不等於「連線中獎」的判定邏輯，避免玩家誤會。
-- 對應 `buildLineDiagrams()` / `renderLineDiagrams()`，於開啟「遊戲資訊」面板時（`menuBtn` click）與賠率表圖示一併建立、重繪；區塊置於「基本規則」之後、賠率表之前。
+- 初版以 4 組手刻範例（中獎／不中獎各 2 組）示範判定邏輯；2026-07-13 改為直接列出全部 20 條固定 Payline 的路徑示意圖，詳見下方更新記錄。
+
+**2026-07-13 更新：資訊面板調整三項**
+
+1. 「遊戲前導片」區塊移到「遊戲資訊」面板的第一項（原本在最後一項），玩家開啟面板第一眼就能看到前導片連結。
+2. 「連線判斷依據（連線圖）」改版：不再顯示「不中獎」範例，改為直接依 `PAYLINES` 陣列產生全部 20 條 Payline 的路徑示意圖（`buildLineDiagrams()` / `renderLineDiagrams()`），以 4×5 網格排列、每條 Payline 一張小圖，黃色節點＋連接線標示該 Payline 涵蓋的 5 個位置與方向（陣列順序即為判定方向 C5→C1），不再繪製符號圖像，只呈現路徑形狀。
+3. NG 模式的 BOSS idle 由單一狀態改為依防護罩「剩餘」百分比分 4 個階段：`idle_100`／`idle_66`／`idle_33`／`idle_0`，對應 `game.shieldDmg`（0=完好累積損傷值）門檻 <34／<67／<100／=100。素材資料夾對應更新為 `Art_Sources\boss\idle_100\`（沿用原本 2026-07-12 更新的 idle 圖，代表防護罩完好的樣貌）、`idle_66\`、`idle_33\`、`idle_0\`（後三者目前為空，尚未有素材時自動 fallback 回程式生成圖形）。為了讓效果在素材補齊前就有感，程式生成 fallback 也新增依損傷比例疊加「變暗＋裂痕」的視覺差異（`drawBoss()` 內新增區塊，僅在 NG 模式套用）。此變更僅影響 NG 模式待機圖；FG 模式的 `fg_mode`、受擊 `hit`、怒吼 `roar` 三個狀態不受影響。
 
 ---
 
@@ -448,7 +453,7 @@ UI 視覺參考：`Prototype規格文件\UI_Layout_REF\ui-layout-reference-v2.ht
 **2026-07-06 更新：方案 A → C 架構升級已完成**
 
 - 新增**方案 C：外部圖檔（Art_Sources，探測式載入）**：`slot-game.html` 現在會在啟動時嘗試從 `Art_Sources\` 讀取逐格動畫序列圖（`0.png, 1.png, ...` 連號），有素材就用 `drawImage` 繪製，資料夾是空的則自動 fallback 回方案 A 的程式繪製像素圖，不會破圖。
-- 分類資料夾：`Art_Sources\symbols\<符號>\idle\`、`Art_Sources\boss\<idle|hit|roar|fg_mode>\`、`Art_Sources\mage\<idle|cast|cast_strong>\`。
+- 分類資料夾：`Art_Sources\symbols\<符號>\idle\`、`Art_Sources\boss\<idle_100|idle_66|idle_33|idle_0|hit|roar|fg_mode>\`（idle 依防護罩剩餘百分比拆成 4 階段，見 2026-07-13 更新）、`Art_Sources\mage\<idle|cast|cast_strong>\`。
 - 因為是純靜態 HTML、沒有伺服器，程式無法列出資料夾內容，只能逐張探測檔名，因此**新增/替換動畫張數或圖片內容都不必改程式碼**；只有新增全新的符號/狀態種類才需要改程式（`slot-game.html` 內的 `SYMBOL_FOLDERS` / `BOSS_STATES` / `MAGE_STATES`）。
 - BOSS 進 BG 模式 500×500 全尺寸進場、向右壓縮格盤的演出效果**尚未實作**，目前 `fg_mode` 只是套用既有的紅色濾鏡疊加，屬於未來待辦。
 
